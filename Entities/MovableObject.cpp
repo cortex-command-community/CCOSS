@@ -896,7 +896,6 @@ void MovableObject::ApplyImpulses()
 
 void MovableObject::PreTravel()
 {
-
 	// Temporarily remove the representation of this from the scene MO layers
     if (m_GetsHitByMOs) 
     { 
