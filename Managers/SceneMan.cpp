@@ -606,6 +606,7 @@ MOID SceneMan::GetMOIDPixel(int pixelX, int pixelY)
 
     if (m_pDebugLayer && m_DrawPixelCheckVisualizations) { m_pDebugLayer->SetPixel(pixelX, pixelY, 5); }
 
+#ifdef DRAW_MOID_LAYER
     if (pixelX < 0 ||
        pixelX >= m_pMOIDLayer->GetBitmap()->w ||
        pixelY < 0 ||
@@ -613,6 +614,9 @@ MOID SceneMan::GetMOIDPixel(int pixelX, int pixelY)
         return g_NoMOID;
 
     return getpixel(m_pMOIDLayer->GetBitmap(), pixelX, pixelY);
+#else
+    return g_MovableMan.GetMOIDPixel(pixelX, pixelY);
+#endif
 }
 
 

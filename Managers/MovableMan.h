@@ -148,6 +148,14 @@ public:
 
     int GetMOIDCount() { return m_MOIDIndex.size(); }
 
+//////////////////////////////////////////////////////////////////////////////////////////
+// Method:          GetMOIDPixel
+//////////////////////////////////////////////////////////////////////////////////////////
+// Description:     Gets a MOID from pixel coordinates in the Scene.
+// Arguments:       The X and Y coordinates of screen Scene pixel to get the MO from.
+// Return value:    The MOID currently at the specified pixel location.
+
+    MOID GetMOIDPixel(int pixelX, int pixelY);
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Method:          GetTeamMOIDCount
