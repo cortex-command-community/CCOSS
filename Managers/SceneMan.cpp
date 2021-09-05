@@ -899,8 +899,10 @@ void SceneMan::RegisterMOIDDrawing(const Vector &center, float radius)
 
 void SceneMan::ClearAllMOIDDrawings()
 {
+#ifdef DRAW_MOID_LAYER
     for (list<IntRect>::iterator itr = m_MOIDDrawings.begin(); itr != m_MOIDDrawings.end(); ++itr)
         ClearMOIDRect(itr->m_Left, itr->m_Top, itr->m_Right, itr->m_Bottom);
+#endif
 
     m_MOIDDrawings.clear();
 }
@@ -3144,7 +3146,7 @@ float SceneMan::ShortestDistanceY(float val1, float val2, bool checkBounds, int 
 
 bool SceneMan::ObscuredPoint(int x, int y, int team)
 {
-    bool obscured = m_pMOIDLayer->GetPixel(x, y) != g_NoMOID || m_pCurrentScene->GetTerrain()->GetPixel(x, y) != g_MaterialAir;
+    bool obscured = m_pCurrentScene->GetTerrain()->GetPixel(x, y) != g_MaterialAir || GetMOIDPixel(x, y) != g_NoMOID;
 
     if (team != Activity::NoTeam)
         obscured = obscured || IsUnseen(x, y, team);

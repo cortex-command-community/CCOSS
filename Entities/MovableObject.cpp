@@ -896,8 +896,10 @@ void MovableObject::ApplyImpulses()
 
 void MovableObject::PreTravel()
 {
+#ifdef DRAW_MOID_LAYER
 	// Temporarily remove the representation of this from the scene MO layers
 	if (m_GetsHitByMOs) { Draw(g_SceneMan.GetMOIDBitmap(), Vector(), g_DrawNoMOID, true); }
+#endif
 
     // Save previous position and velocities before moving
     m_PrevPos = m_Pos;
@@ -933,7 +935,9 @@ void MovableObject::PostTravel()
         m_IgnoresAtomGroupHits = m_Vel.GetLargest() < m_IgnoresAGHitsWhenSlowerThan;
 
 	if (m_GetsHitByMOs) {
+#ifdef DRAW_MOID_LAYER
         if (!GetParent()) { Draw(g_SceneMan.GetMOIDBitmap(), Vector(), g_DrawMOID, true); }
+#endif
 		m_AlreadyHitBy.clear();
 	}
 	m_IsUpdated = true;

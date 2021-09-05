@@ -174,9 +174,8 @@ MovableObject * MovableMan::GetMOFromID(MOID whichID) {
 //////////////////////////////////////////////////////////////////////////////////////////
 // Description:     Gets a MOID from pixel coordinates in the Scene.
 
-MOID MovableMan::GetMOIDPixel(int pixelX, int pixelY) {
-    Vector samplePos = Vector(pixelX, pixelY);
-
+MOID MovableMan::GetMOIDPixel(int pixelX, int pixelY) 
+{
     // Loop through the MOs
     for (vector<MovableObject*>::iterator itr = m_MOIDIndex.begin(); itr != m_MOIDIndex.end(); ++itr)
     {
@@ -185,7 +184,7 @@ MOID MovableMan::GetMOIDPixel(int pixelX, int pixelY) {
         if (mo && mo->GetsHitByMOs())
         {
             // Check if the pixel is nearer than the "maximum sprite radius"
-            Vector sampleToMO = g_SceneMan.ShortestDistance(mo->GetPos(), samplePos);
+            Vector sampleToMO = g_SceneMan.ShortestDistance(mo->GetPos(), Vector(pixelX, pixelY));
             if (sampleToMO.GetMagnitude() < mo->GetRadius())
             {
                 // Check the scene position in the current local space of the MO
@@ -199,7 +198,7 @@ MOID MovableMan::GetMOIDPixel(int pixelX, int pixelY) {
                 BITMAP* sprite = mo->GetSpriteFrame(mo->GetFrame());
                 if (is_inside_bitmap(sprite, localX, localY, 0) &&
                            _getpixel(sprite, localX, localY) != g_MaskColor)
-                    return (*itr)->GetID();
+                    return mo->GetID();
             }
         }
     }
@@ -2143,7 +2142,9 @@ void MovableMan::UpdateDrawMOIDs(BITMAP *pTargetBitmap)
         {
 			Vector notUsed;
             m_Actors[i]->UpdateMOID(m_MOIDIndex);
+#ifdef DRAW_MOID_LAYER
             m_Actors[i]->Draw(pTargetBitmap, notUsed, g_DrawMOID, true);
+#endif
             currentMOID = m_MOIDIndex.size();
         }
         else
@@ -2154,7 +2155,9 @@ void MovableMan::UpdateDrawMOIDs(BITMAP *pTargetBitmap)
         if (m_Items[i]->GetsHitByMOs() && !m_Items[i]->IsSetToDelete())
         {
             m_Items[i]->UpdateMOID(m_MOIDIndex);
+#ifdef DRAW_MOID_LAYER
             m_Items[i]->Draw(pTargetBitmap, Vector(), g_DrawMOID, true);
+#endif
             currentMOID = m_MOIDIndex.size();
         }
         else
@@ -2165,7 +2168,9 @@ void MovableMan::UpdateDrawMOIDs(BITMAP *pTargetBitmap)
         if (m_Particles[i]->GetsHitByMOs() && !m_Particles[i]->IsSetToDelete())
         {
             m_Particles[i]->UpdateMOID(m_MOIDIndex);
+#ifdef DRAW_MOID_LAYER
             m_Particles[i]->Draw(pTargetBitmap, Vector(), g_DrawMOID, true);
+#endif
             currentMOID = m_MOIDIndex.size();
         }
         else
