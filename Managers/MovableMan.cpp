@@ -170,6 +170,38 @@ MovableObject * MovableMan::GetMOFromID(MOID whichID) {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
+// Method:          HitTestMOIDAtPixel
+//////////////////////////////////////////////////////////////////////////////////////////
+// Description:     Tests whether this MOID is present at this Pixel Position
+
+bool MovableMan::HitTestMOIDAtPixel(MOID moid, int pixelX, int pixelY) {
+    MOSprite* mo = dynamic_cast<MOSprite*>(GetMOFromID(moid));
+
+    if (mo && mo->GetsHitByMOs())         
+    {
+        // Check if the pixel is nearer than the "maximum sprite radius"
+        Vector sampleToMO = g_SceneMan.ShortestDistance(mo->GetPos(), Vector(pixelX, pixelY));
+        if (sampleToMO.GetMagnitude() < mo->GetRadius()) 
+        {
+            // Check the scene position in the current local space of the MO
+            // Account for Position, Sprite Offset, Angle and HFlipped (and Scale eventually maybe)
+            Matrix rotation = mo->GetRotMatrix(); // <- Copy to non-const variable so / operator overload works
+            Vector entryPos = (sampleToMO / rotation).GetXFlipped(mo->IsHFlipped()) - mo->GetSpriteOffset();
+            int localX = std::floor(entryPos.m_X),
+                localY = std::floor(entryPos.m_Y);
+
+            // Return the MOID if we hit the Sprite
+            BITMAP* sprite = mo->GetSpriteFrame(mo->GetFrame());
+            if (is_inside_bitmap(sprite, localX, localY, 0) &&
+                       _getpixel(sprite, localX, localY) != g_MaskColor)
+                return true;
+        }
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
 // Method:          GetMOIDPixel
 //////////////////////////////////////////////////////////////////////////////////////////
 // Description:     Gets a MOID from pixel coordinates in the Scene.
@@ -183,23 +215,9 @@ MOID MovableMan::GetMOIDPixel(int pixelX, int pixelY)
         MOSprite* mo = dynamic_cast<MOSprite*>((*itr));
         if (mo && mo->GetsHitByMOs())
         {
-            // Check if the pixel is nearer than the "maximum sprite radius"
-            Vector sampleToMO = g_SceneMan.ShortestDistance(mo->GetPos(), Vector(pixelX, pixelY));
-            if (sampleToMO.GetMagnitude() < mo->GetRadius())
-            {
-                // Check the scene position in the current local space of the MO
-                // Account for Position, Sprite Offset, Angle and HFlipped (and Scale eventually maybe)
-                Matrix rotation = mo->GetRotMatrix(); // <- Copy to non-const variable so / operator overload works
-                Vector entryPos = (sampleToMO / rotation).GetXFlipped(mo->IsHFlipped()) - mo->GetSpriteOffset();
-                int localX = std::floor(entryPos.m_X), 
-                    localY = std::floor(entryPos.m_Y);
-
-                // Return the MOID if we hit the Sprite
-                BITMAP* sprite = mo->GetSpriteFrame(mo->GetFrame());
-                if (is_inside_bitmap(sprite, localX, localY, 0) &&
-                           _getpixel(sprite, localX, localY) != g_MaskColor)
-                    return mo->GetID();
-            }
+            MOID curMOID = mo->GetID();
+            if (HitTestMOIDAtPixel(curMOID, pixelX, pixelY))
+                return curMOID;
         }
     }
 
