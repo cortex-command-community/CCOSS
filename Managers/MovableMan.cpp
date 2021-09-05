@@ -177,7 +177,7 @@ MovableObject * MovableMan::GetMOFromID(MOID whichID) {
 bool MovableMan::HitTestMOIDAtPixel(MOID moid, int pixelX, int pixelY) {
     MOSprite* mo = dynamic_cast<MOSprite*>(GetMOFromID(moid));
 
-    if (mo && mo->GetsHitByMOs())         
+    if (mo && mo->GetsHitByMOs() && !mo->m_tempDisableGettingHit) // && !mo->GetParent() <- Disables GetsHit on Attachables so ships can move but buggy
     {
         // Check if the pixel is nearer than the "maximum sprite radius"
         Vector sampleToMO = g_SceneMan.ShortestDistance(mo->GetPos(), Vector(pixelX, pixelY));

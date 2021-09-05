@@ -1807,6 +1807,9 @@ enum MOType
 	void SetProvidesPieMenuContext(bool value) { m_ProvidesPieMenuContext = value; }
 
 
+// Set to true while travelling; prevents self-intersection
+bool m_tempDisableGettingHit;
+
 //////////////////////////////////////////////////////////////////////////////////////////
 // Protected member variable and method declarations
 
