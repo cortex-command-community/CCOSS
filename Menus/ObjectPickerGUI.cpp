@@ -154,7 +154,6 @@ namespace RTE {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	bool ObjectPickerGUI::SetListFocus(PickerFocus listToFocusOn) {
-		// If m_PickerFocus is already focused on listToFocusOn, nothing needs to be done here
 		if (listToFocusOn == m_PickerFocus) {
 			return false;
 		}
@@ -473,8 +472,7 @@ namespace RTE {
 					m_ObjectsList->ScrollUp();
 				} else if (pressScrollDown) {
 					m_ObjectsList->ScrollDown();
-				} else if (m_Controller->IsState(ControlState::PRESS_FACEBUTTON)
-						|| m_Controller->IsState(ControlState::PRESS_RIGHT)) {
+				} else if (m_Controller->IsState(ControlState::PRESS_FACEBUTTON) || m_Controller->IsState(ControlState::PRESS_RIGHT)) {
 					if (const GUIListPanel::Item *objectListItem = m_ObjectsList->GetSelected()) {
 						if (objectListItem->m_ExtraIndex >= 0) {
 							ToggleObjectsListModuleGroupExpansion(objectListItem->m_ExtraIndex);
