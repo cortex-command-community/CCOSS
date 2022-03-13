@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 <details><summary><b>Added</b></summary>
+
+- Improved build menu keyboard support. The `Move Right` key can now be pressed in the build menu to expand a module (a faction tab in the items window) and to pick an object to place.
+
 </details>
 
 <details><summary><b>Changed</b></summary>
