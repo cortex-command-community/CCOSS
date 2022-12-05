@@ -19,6 +19,7 @@ namespace RTE {
 		m_InheritsVel = 1.0F;
 		m_IgnoresTeamHits = false;
 		m_SpreadMode = SpreadMode::SpreadRandom;
+		m_ScreenShakeAmount = -1.0F;
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -34,6 +35,7 @@ namespace RTE {
 		m_InheritsVel = reference.m_InheritsVel;
 		m_IgnoresTeamHits = reference.m_IgnoresTeamHits;
 		m_SpreadMode = reference.m_SpreadMode;
+		m_ScreenShakeAmount = reference.m_ScreenShakeAmount;
 
 		return 0;
 	}
@@ -51,9 +53,9 @@ namespace RTE {
 		} else if (propName == "Spread") {
 			reader >> m_Spread;
 		} else if (propName == "MinVelocity") {
-			reader >> m_MinVelocity;
+			SetMinVelocity(std::stof(reader.ReadPropValue()));
 		} else if (propName == "MaxVelocity") {
-			reader >> m_MaxVelocity;
+			SetMaxVelocity(std::stof(reader.ReadPropValue()));
 		} else if (propName == "LifeVariation") {
 			reader >> m_LifeVariation;
 		} else if (propName == "InheritsVel") {
@@ -62,6 +64,8 @@ namespace RTE {
 			reader >> m_IgnoresTeamHits;
 		} else if (propName == "SpreadMode") {
 			m_SpreadMode = static_cast<SpreadMode>(std::stoi(reader.ReadPropValue()));
+		} else if (propName == "ScreenShakeAmount") {
+			reader >> m_ScreenShakeAmount;
 		} else {
 			return Serializable::ReadProperty(propName, reader);
 		}
@@ -97,6 +101,8 @@ namespace RTE {
 		writer << m_LifeVariation;
 		writer.NewProperty("InheritsVel");
 		writer << m_InheritsVel;
+		writer.NewProperty("ScreenShakeAmount");
+		writer << m_ScreenShakeAmount;
 		*/
 
 		return 0;

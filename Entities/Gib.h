@@ -86,7 +86,13 @@ namespace RTE {
 		/// Gets the specified minimum velocity a GibParticle object can have when spawned.
 		/// </summary>
 		/// <returns>The minimum velocity a GibParticle can have when spawned in m/s.</returns>
-		float GetMinVelocity() const { return std::min(m_MinVelocity, m_MaxVelocity); }
+		float GetMinVelocity() const { return m_MinVelocity; }
+
+		/// <summary>
+		/// Sets the specified minimum velocity a GibParticle object can have when spawned.
+		/// </summary>
+		/// <param name="newMinVelocity">The new minimum velocity in m/s.</param>
+		void SetMinVelocity(float newMinVelocity) { m_MinVelocity = newMinVelocity; if (m_MinVelocity > m_MaxVelocity) { std::swap(m_MinVelocity, m_MaxVelocity); } }
 
 		/// <summary>
 		/// Sets the specified minimum velocity a GibParticle object can have when spawned.
@@ -98,7 +104,13 @@ namespace RTE {
 		/// Gets the specified maximum velocity a GibParticle object can have when spawned.
 		/// </summary>
 		/// <returns>The maximum velocity a GibParticle can have when spawned in m/s.</returns>
-		float GetMaxVelocity() const { return std::max(m_MinVelocity, m_MaxVelocity); }
+		float GetMaxVelocity() const { return m_MaxVelocity; }
+
+		/// <summary>
+		/// Sets the specified maximum velocity a GibParticle object can have when spawned.
+		/// </summary>
+		/// <param name="newMaxVelocity"></param>
+		void SetMaxVelocity(float newMaxVelocity) { m_MaxVelocity = newMaxVelocity; if (m_MinVelocity > m_MaxVelocity) { std::swap(m_MinVelocity, m_MaxVelocity); } }
 
 		/// <summary>
 		/// Sets the specified maximum velocity a GibParticle object can have when spawned.
@@ -149,6 +161,7 @@ namespace RTE {
 		float m_InheritsVel; //!< How much of the exploding parent's velocity this Gib should inherit.
 		bool m_IgnoresTeamHits; //!< Whether this Gib should ignore hits with the team of the exploding parent or not.
 		SpreadMode m_SpreadMode; //!< Determines what kind of logic is used when applying velocity to the GibParticle objects.
+		float m_ScreenShakeAmount; //!< Determines how much screenshake this gib causes.
 
 	private:
 

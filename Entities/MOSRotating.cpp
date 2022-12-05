@@ -1078,6 +1078,7 @@ void MOSRotating::CreateGibsWhenGibbing(const Vector &impactImpulse, MovableObje
 		float spread = gibSettingsObject.GetSpread();
 		float minVelocity = gibSettingsObject.GetMinVelocity();
 		float maxVelocity = gibSettingsObject.GetMaxVelocity();
+        float screenShakeAmount = gibSettingsObject.GetScreenShakeAmount();
 
 		float mass = (gibParticleClone->GetMass() != 0 ? gibParticleClone->GetMass() : 0.0001F);
 		int lifetime = gibParticleClone->GetLifetime();
