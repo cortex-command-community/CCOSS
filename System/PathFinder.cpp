@@ -397,7 +397,6 @@ namespace RTE {
 			// UpdateNodeCosts only calculates Materials for Right and Down directions, so each PathNode's Up and Left direction Materials need to be matched to the respective neighbor's opposite direction Materials.
 			// For example, this PathNode's Left Material is its Left neighbor's Right Material.
 			std::for_each(
-				std::execution::par_unseq,
 				nodeVec.begin(),
 				nodeVec.end(),
 				[this](int nodeId) {
