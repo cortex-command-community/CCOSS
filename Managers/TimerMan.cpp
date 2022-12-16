@@ -42,7 +42,6 @@ namespace RTE {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void TimerMan::Initialize() {
 		ResetTime();
 		if (m_DeltaTimeS <= 0) { SetDeltaTimeSecs(c_DefaultDeltaTimeS); }
 		if (m_RealToSimCap <= 0) { SetRealToSimCap(c_DefaultRealToSimCap); }
