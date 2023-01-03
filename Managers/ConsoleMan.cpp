@@ -208,7 +208,9 @@ namespace RTE {
 		std::scoped_lock<std::mutex> printStringLock(printStringMutex);
 
 		m_OutputLog.emplace_back("\n" + stringToPrint);
-		if (System::IsLoggingToCLI()) { System::PrintToCLI(stringToPrint); }
+		if (System::IsLoggingToCLI()) { 
+			System::PrintToCLI(stringToPrint); 
+		}
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
