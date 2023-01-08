@@ -31,6 +31,13 @@
 
 namespace RTE {
 
+AlarmEvent::AlarmEvent(const Vector &pos, int team, float range)
+{
+    m_ScenePos = pos;
+    m_Team = (Activity::Teams)team;
+    m_Range = range * g_FrameMan.GetPlayerScreenWidth() * 0.51F;
+}
+
 const std::string MovableMan::c_ClassName = "MovableMan";
 
 
@@ -1674,10 +1681,12 @@ void MovableMan::Update()
         // Actors
 		g_PerformanceMan.StartPerformanceMeasurement(PerformanceMan::ActorsUpdate);
         {
+            g_PerformanceMan.StartPerformanceMeasurement(PerformanceMan::ActorsAIUpdate);
             std::for_each(std::execution::par, m_Actors.begin(), m_Actors.end(), 
                 [](Actor *actor) {
                     actor->GetController()->Update();
-                }); 
+                });
+            g_PerformanceMan.StopPerformanceMeasurement(PerformanceMan::ActorsAIUpdate);
 
             for (Actor *actor : m_Actors) {
                 actor->Update();

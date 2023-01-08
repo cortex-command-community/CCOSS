@@ -15,11 +15,8 @@
 // Inclusions of header files
 
 #include "Serializable.h"
-#include "Entity.h"
-#include "FrameMan.h"
-#include "SceneMan.h"
-#include "LuaMan.h"
 #include "Singleton.h"
+#include "Activity.h"
 
 #define g_MovableMan MovableMan::Instance()
 
@@ -33,6 +30,8 @@ class MOPixel;
 class MOSprite;
 class AHuman;
 class SceneLayer;
+class SceneObject;
+class Box;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +44,7 @@ class SceneLayer;
 struct AlarmEvent {
 	AlarmEvent() { m_ScenePos.Reset(); m_Team = Activity::NoTeam; m_Range = 1.0F; }
 	// TODO: Stop relying on screen width for this shit!
-	AlarmEvent(const Vector &pos, int team = Activity::NoTeam, float range = 1.0F) { m_ScenePos = pos; m_Team = (Activity::Teams)team; m_Range = range * g_FrameMan.GetPlayerScreenWidth() * 0.51F; }
+	AlarmEvent(const Vector &pos, int team = Activity::NoTeam, float range = 1.0F);
 
     // Absolute position in the scene where this occurred
     Vector m_ScenePos;
