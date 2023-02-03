@@ -1984,6 +1984,7 @@ void MovableMan::UpdateControllers()
         // We need to stop the GC while performing parallel execution
         // This is necessary as a result of how Lua scripts in one state can create different objects that potentially belong to another state
         // Luabind really doesn't like that, and panics when it sees that mismatch
+        g_LuaMan.GetMasterScriptState().StopGC();
         for (LuaStateWrapper &luaState : luaStates) {
             luaState.StopGC();
         }
@@ -1997,6 +1998,7 @@ void MovableMan::UpdateControllers()
                 }
             });
 
+        g_LuaMan.GetMasterScriptState().RestartGC();
         for (LuaStateWrapper &luaState : luaStates) {
             luaState.RestartGC();
         }
