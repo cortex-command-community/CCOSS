@@ -48,6 +48,9 @@ namespace RTE {
 ConcreteClassInfo(Scene, Entity, 0);
 const std::string Scene::Area::c_ClassName = "Area";
 
+// Holds the path calculated by CalculateScenePath
+thread_local std::list<Vector> s_ScenePath;
+
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Method:          Clear
@@ -475,7 +478,6 @@ void Scene::Clear()
 	m_AreaList.clear();
     m_Locked = false;
     m_GlobalAcc.Reset();
-    m_ScenePath.clear();
 	m_SelectedAssemblies.clear();
     m_AssembliesCounts.clear();
 	m_pPreviewBitmap = 0;
