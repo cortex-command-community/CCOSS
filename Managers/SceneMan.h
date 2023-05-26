@@ -1354,6 +1354,18 @@ public:
 	/// </summary>
 	void ClearCurrentScene();
 
+	/// <summary>
+	/// Gets the maximum height of a column of scrap terrain to collapse, when the bottom pixel is knocked loose.
+	/// </summary>
+	/// <returns>The compacting height of scrap terrain.</returns>
+	int GetScrapCompactingHeight() const { return m_ScrapCompactingHeight; }
+
+	/// <summary>
+	/// Sets the maximum height of a column of scrap terrain to collapse, when the bottom pixel is knocked loose.
+	/// </summary>
+	/// <param name="newHeight">The new compacting height, in pixels.</param>
+	void SetScrapCompactingHeight(int newHeight) { m_ScrapCompactingHeight = newHeight; }
+
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Protected member variable and method declarations
 
@@ -1415,6 +1427,8 @@ public:
     Timer m_CleanTimer;
 	// Bitmap to look for orphaned regions
 	BITMAP * m_pOrphanSearchBitmap;
+
+	int m_ScrapCompactingHeight; //!< The maximum height of a column of scrap terrain to collapse, when the bottom pixel is knocked loose.
 
 
 //////////////////////////////////////////////////////////////////////////////////////////

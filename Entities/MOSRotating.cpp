@@ -15,6 +15,7 @@
 
 #include "CameraMan.h"
 #include "SettingsMan.h"
+#include "PresetMan.h"
 #include "AtomGroup.h"
 #include "SLTerrain.h"
 #include "MOPixel.h"
@@ -281,21 +282,17 @@ int MOSRotating::ReadProperty(const std::string_view &propName, Reader &reader)
 			++attachableIterator;
 			delete RemoveAttachable(attachable);
 		}
-	} else if (propName == "AddAEmitter" || propName == "AddEmitter")
-    {
-        AEmitter *pEmitter = new AEmitter;
-        reader >> pEmitter;
-		m_Attachables.push_back(pEmitter);
-    }
-    else if (propName == "AddAttachable")
-    {
-        Attachable *pAttachable = new Attachable;
-        reader >> pAttachable;
-        m_Attachables.push_back(pAttachable);
+	} else if (propName == "AddAttachable" || propName == "AddAEmitter" || propName == "AddEmitter") {
+		Entity *readerEntity = g_PresetMan.ReadReflectedPreset(reader);
+		if (Attachable *readerAttachable = dynamic_cast<Attachable *>(readerEntity)) {
+			AddAttachable(readerAttachable);
+		} else {
+			reader.ReportError("Tried to AddAttachable a non-Attachable type!");
+		}
 	} else if (propName == "SpecialBehaviour_AddWound") {
 		AEmitter *wound = new AEmitter;
 		reader >> wound;
-		m_Wounds.push_back(wound);
+		AddWound(wound, wound->GetParentOffset());
 	}
     else if (propName == "AddGib")
     {
@@ -1723,11 +1720,7 @@ void MOSRotating::SetWhichMOToNotHit(MovableObject *moToNotHit, float forHowLong
 // Description:     Draws this MOSRotating's current graphical representation to a
 //                  BITMAP of choice.
 
-void MOSRotating::Draw(BITMAP *targetBitmap,
-                       const Vector &targetPos,
-                       DrawMode mode,
-                       bool onlyPhysical) const
-{
+void MOSRotating::Draw(BITMAP *targetBitmap, const Vector &targetPos, DrawMode mode, bool onlyPhysical) const {
     RTEAssert(!m_aSprite.empty(), "No sprite bitmaps loaded to draw!");
     RTEAssert(m_Frame >= 0 && m_Frame < m_FrameCount, "Frame is out of bounds!");
 
@@ -1848,10 +1841,7 @@ void MOSRotating::Draw(BITMAP *targetBitmap,
                 }
             }
 
-            //////////////////
-            // FLIPPED
-            if (hFlipped)
-            {
+            if (hFlipped) {
                 bool tempBitmap = false;
                 BITMAP* usedFlipBitmap = pFlipBitmap;
                 if (!usedFlipBitmap) {
@@ -1870,8 +1860,7 @@ void MOSRotating::Draw(BITMAP *targetBitmap,
                 }
 
                 // Transparent mode
-                if (mode == g_DrawTrans)
-                {
+                if (mode == g_DrawTrans) {
                     clear_to_color(pTempBitmap, keyColor);
                     // Draw the rotated thing onto the intermediate bitmap so its COM position aligns with the middle of the temp bitmap.
                     // The temp bitmap should be able to hold the full size since it is larger than the max diameter.
@@ -1893,13 +1882,9 @@ void MOSRotating::Draw(BITMAP *targetBitmap,
 
                         draw_trans_sprite(pTargetBitmap, pTempBitmap, spriteX, spriteY);
                     }
-                }
-                // Non-transparent mode
-                else
-                {
+                } else {
                     // Do the passes loop in here so the flipping operation doesn't get done multiple times
-                    for (int i = 0; i < drawPasses; ++i)
-                    {
+                    for (int i = 0; i < drawPasses; ++i) {
                         int spriteX = drawPositions[i].GetFloorIntX();
                         int spriteY = drawPositions[i].GetFloorIntY();
 
@@ -1918,14 +1903,9 @@ void MOSRotating::Draw(BITMAP *targetBitmap,
                 if (tempBitmap) {
                     destroy_bitmap(usedFlipBitmap);
                 }
-            }
-            /////////////////
-            // NON-FLIPPED
-            else
-            {
+            } else {
                 // Transparent mode
-                if (mode == g_DrawTrans)
-                {
+                if (mode == g_DrawTrans) {
                     clear_to_color(pTempBitmap, keyColor);
                     // Draw the rotated thing onto the intermediate bitmap so its COM position aligns with the middle of the temp bitmap.
                     // The temp bitmap should be able to hold the full size since it is larger than the max diameter.
@@ -1947,12 +1927,8 @@ void MOSRotating::Draw(BITMAP *targetBitmap,
 
                         draw_trans_sprite(pTargetBitmap, pTempBitmap, spriteX, spriteY);
                     }
-                }
-                // Non-transparent mode
-                else
-                {
-                    for (int i = 0; i < drawPasses; ++i)
-                    {
+                } else {
+                    for (int i = 0; i < drawPasses; ++i) {
                         int spriteX = drawPositions[i].GetFloorIntX();
                         int spriteY = drawPositions[i].GetFloorIntY();
 
