@@ -70,6 +70,7 @@ void MovableObject::Clear()
     m_MOID = g_NoMOID;
     m_RootMOID = g_NoMOID;
     m_HasEverBeenAddedToMovableMan = false;
+	m_ExistsInMovableMan = false;
     m_MOIDFootprint = 0;
     m_AlreadyHitBy.clear();
 	m_VelOscillations = 0;
@@ -341,7 +342,7 @@ int MovableObject::ReadProperty(const std::string_view &propName, Reader &reader
 	else if (propName == "HUDVisible")
 		reader >> m_HUDVisible;
 	else if (propName == "ScriptPath") {
-		std::string scriptPath = CorrectBackslashesInPath(reader.ReadPropValue());
+		std::string scriptPath = g_PresetMan.GetFullModulePath(reader.ReadPropValue());
         switch (LoadScript(scriptPath)) {
             case 0:
                 break;
@@ -497,7 +498,7 @@ int MovableObject::Save(Writer &writer) const
     writer << m_IgnoreTerrain;
     writer.NewProperty("SimUpdatesBetweenScriptedUpdates");
     writer << m_SimUpdatesBetweenScriptedUpdates;
-    
+
     return 0;
 }
 
@@ -710,7 +711,7 @@ MovableObject::MovableObject(const MovableObject &reference):
     m_AgeTimer(reference.GetAge()),
     m_Lifetime(reference.GetLifetime())
 {
-    
+
 }
 */
 
@@ -904,7 +905,7 @@ void MovableObject::PreTravel()
 
 void MovableObject::Travel()
 {
-    
+
 }
 
 

@@ -705,6 +705,9 @@ void LimbPath::Draw(BITMAP *pTargetBitmap,
         Vector nextWorldPosition = m_JointPos + RotatePoint(nextPoint);
         line(pTargetBitmap, prevWorldPosition.m_X, prevWorldPosition.m_Y, nextWorldPosition.m_X, nextWorldPosition.m_Y, color);
 
+        Vector min(std::min(prevWorldPosition.m_X, nextWorldPosition.m_X), std::min(prevWorldPosition.m_Y, nextWorldPosition.m_Y));
+        Vector max(std::max(prevWorldPosition.m_X, nextWorldPosition.m_X), std::max(prevWorldPosition.m_Y, nextWorldPosition.m_Y));
+
         prevPoint += *itr;
     }
 }

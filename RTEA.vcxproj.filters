@@ -564,11 +564,11 @@
     <ClInclude Include="Managers\WindowMan.h">
       <Filter>Managers</Filter>
     </ClInclude>
-    <ClInclude Include="Managers\CameraMan.h">
-      <Filter>Managers</Filter>
-    </ClInclude>
     <ClInclude Include="Managers\ThreadMan.h">
       <Filter>Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="Resources\Credits.h">
+      <Filter>Resources</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1076,6 +1076,9 @@
     </ClCompile>
     <ClCompile Include="System\glad\gl.c">
       <Filter>System\glad</Filter>
+    </ClCompile>
+    <ClCompile Include="Managers\CameraMan.cpp">
+      <Filter>Managers</Filter>
     </ClCompile>
     <ClCompile Include="Lua\LuaBindingsPrimitives.cpp">
       <Filter>Lua</Filter>
