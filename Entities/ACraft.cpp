@@ -853,11 +853,7 @@ void ACraft::ResetAllTimers() {
 
 void ACraft::Update()
 {
-    /////////////////////////////////////////////////
-    // Update MovableObject, adds on the forces etc
-
     Actor::Update();
-
 
     ////////////////////////////////////
     // Update viewpoint

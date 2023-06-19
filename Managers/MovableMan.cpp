@@ -1576,35 +1576,6 @@ void MovableMan::RegisterAlarmEvent(const AlarmEvent &newEvent)
     m_AddedAlarmEvents.push_back(newEvent);
 }
 
-void updateAllScripts(MovableObject* mo, LuaStateWrapper& luaState) {
-    if (mo->GetLuaState() == &luaState) {
-        mo->UpdateScripts();
-    }
-
-    if (MOSRotating* mosr = dynamic_cast<MOSRotating*>(mo)) {
-        for (auto attachablrItr = mosr->GetAttachableList().begin(); attachablrItr != mosr->GetAttachableList().end(); ) {
-            Attachable* attachable = *attachablrItr;
-            ++attachablrItr;
-
-            if (attachable->GetLuaState() == &luaState) {
-                attachable->UpdateScripts();
-            }
-            updateAllScripts(attachable, luaState);
-        }
-
-        for (auto woundItr = mosr->GetWoundList().begin(); woundItr != mosr->GetWoundList().end(); ) {
-            AEmitter* wound = *woundItr;
-            ++woundItr;
-
-            if (wound->GetLuaState() == &luaState) {
-                wound->UpdateScripts();
-            }
-            updateAllScripts(wound, luaState);
-        }
-    }
-};
-
-
 //////////////////////////////////////////////////////////////////////////////////////////
 // Method:          Update
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -1634,6 +1605,16 @@ void MovableMan::Update()
     }
     m_AddedAlarmEvents.clear();
 
+    // Travel MOs
+    Travel();
+
+    // Updates everything needed prior to AI/user input being processed
+    // Fugly hack to keep backwards compat with scripts that rely on weird frame-delay-ordering behaviours
+	PreControllerUpdate();
+
+    // Updates AI/user input
+	UpdateControllers();
+
     // Will use some common iterators
     std::deque<Actor *>::iterator aIt;
     std::deque<Actor *>::iterator amidIt;
@@ -1642,66 +1623,50 @@ void MovableMan::Update()
     std::deque<MovableObject *>::iterator parIt;
     std::deque<MovableObject *>::iterator midIt;
 
-    // Update all scripts for all objects
-    g_PerformanceMan.StartPerformanceMeasurement(PerformanceMan::ScriptsUpdate);
     {
-        LuaStatesArray& luaStates = g_LuaMan.GetThreadedScriptStates();
-
-        // seq for now, until we add the option to enable threading for lua scripts
-        // todo - each lua state should keep a list of their owned instances
-        // Then we can also dynamically assign MOs to states with the least instances
-        std::for_each(std::execution::par, luaStates.begin(), luaStates.end(),
-            [&](LuaStateWrapper& luaState) {
-                g_LuaMan.SetThreadLuaStateOverride(&luaState);
-
-                for (Actor* actor : m_Actors) {
-                    updateAllScripts(actor, luaState);
-                }
-
-                for (MovableObject* item : m_Items) {
-                    updateAllScripts(item, luaState);
-                }
-
-                for (MovableObject* particle : m_Particles) {
-                    updateAllScripts(particle, luaState);
-                }
-
-                g_LuaMan.SetThreadLuaStateOverride(nullptr);
-            });
-    }
-    g_PerformanceMan.StopPerformanceMeasurement(PerformanceMan::ScriptsUpdate);
-
-    {
+        // Actors
 		g_PerformanceMan.StartPerformanceMeasurement(PerformanceMan::ActorsUpdate);
-        for (Actor *actor : m_Actors) {
-            actor->Update();
-            actor->ApplyImpulses();
+        {
+            for (Actor *actor : m_Actors) {
+                actor->Update();
+                actor->UpdateScripts();
+                actor->ApplyImpulses();
+            }
         }
 		g_PerformanceMan.StopPerformanceMeasurement(PerformanceMan::ActorsUpdate);
 
-        int count = 0;
-        int itemLimit = m_Items.size() - m_MaxDroppedItems;
-        for (iIt = m_Items.begin(); iIt != m_Items.end(); ++iIt, ++count) {
-            (*iIt)->Update();
-            (*iIt)->ApplyImpulses();
-            if (count <= itemLimit) {
-                (*iIt)->SetToSettle(true);
+        // Items
+        {
+            int count = 0;
+            int itemLimit = m_Items.size() - m_MaxDroppedItems;
+            for (iIt = m_Items.begin(); iIt != m_Items.end(); ++iIt, ++count)
+            {
+                (*iIt)->Update();
+                (*iIt)->UpdateScripts();
+                (*iIt)->ApplyImpulses();
+                if (count <= itemLimit)
+                {
+                    (*iIt)->SetToSettle(true);
+                }
             }
         }
 
+        // Particles
 		g_PerformanceMan.StartPerformanceMeasurement(PerformanceMan::ParticlesUpdate);
-        for (MovableObject* particle : m_Particles) {
-            particle->Update();
-            particle->ApplyImpulses();
-            particle->RestDetection();
-            // Copy particles that are at rest to the terrain and mark them for deletion.
-            if (particle->IsAtRest()) {
-                particle->SetToSettle(true);
+        {
+            for (MovableObject* particle : m_Particles) {
+                particle->Update();
+                particle->UpdateScripts();
+                particle->ApplyImpulses();
+                particle->RestDetection();
+                // Copy particles that are at rest to the terrain and mark them for deletion.
+                if (particle->IsAtRest()) {
+                    particle->SetToSettle(true);
+                }
             }
         }
 		g_PerformanceMan.StopPerformanceMeasurement(PerformanceMan::ParticlesUpdate);
     }
-
 
     ///////////////////////////////////////////////////
     // Clear the MOID layer before starting to delete stuff which may be in the MOIDIndex
@@ -1976,8 +1941,26 @@ void MovableMan::UpdateControllers()
                 }
                 g_LuaMan.SetThreadLuaStateOverride(nullptr);
             });
+
+        // Update actors without any lua state 
+        for (Actor* actor : m_Actors) {
+            if (actor->GetLuaState() == nullptr) {
+                actor->GetController()->Update();
+            }
+        }
     }
     g_PerformanceMan.StopPerformanceMeasurement(PerformanceMan::ActorsAI);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+void MovableMan::PreControllerUpdate()
+{
+    g_PerformanceMan.StartPerformanceMeasurement(PerformanceMan::ActorsUpdate);
+    for (Actor *actor : m_Actors) {
+        actor->PreControllerUpdate();
+    }
+    g_PerformanceMan.StopPerformanceMeasurement(PerformanceMan::ActorsUpdate);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
