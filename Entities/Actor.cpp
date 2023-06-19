@@ -1087,7 +1087,7 @@ void Actor::GibThis(const Vector &impactImpulse, MovableObject *movableObjectToI
     m_Inventory.clear();
 
     // If this is the actual brain of any player, flash that player's screen when he's now dead
-	if (g_SettingsMan.FlashOnBrainDamage())
+	if (g_SettingsMan.FlashOnBrainDamage() && g_ActivityMan.IsInActivity())
 	{
 		int brainOfPlayer = g_ActivityMan.GetActivity()->IsBrainOfWhichPlayer(this);
 		// Only flash if player is human (AI players don't have screens!)
@@ -1221,6 +1221,9 @@ MOID Actor::GetAIMOWaypointID() const
 
 bool Actor::UpdateMovePath()
 {
+	if (g_SceneMan.GetScene() == nullptr) {
+		return false;
+	}
     // TODO: Do throttling of calls for this function over time??
 
     // Estimate how much material this actor can dig through
