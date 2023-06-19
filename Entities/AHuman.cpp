@@ -3449,6 +3449,8 @@ void AHuman::Update()
 
 	if (m_Controller.IsState(WEAPON_DROP) && m_Status != INACTIVE) {
 		bool anyDropped = false;
+        bool currentlyFGArm = 1;
+
 		for (Arm *arm : { m_pFGArm, m_pBGArm }) {
 			if (!anyDropped && arm && arm->GetHeldDevice()) {
 				HeldDevice *heldDevice = arm->GetHeldDevice();
@@ -3460,13 +3462,19 @@ void AHuman::Update()
 				heldDevice->SetAngularVel(heldDevice->GetAngularVel() + m_AngularVel * 0.5F + 3.0F * RandomNormalNum());
 
 				arm->SetHandPos(heldDevice->GetPos());
-				if (!m_Inventory.empty()) {
-					arm->SetHeldDevice(dynamic_cast<HeldDevice *>(SwapNextInventory()));
-					arm->SetHandPos(m_Pos + RotateOffset(m_HolsterOffset));
+
+                HeldDevice* BGArmDevice = m_pBGArm->GetHeldDevice();
+                if (currentlyFGArm && m_pBGArm && BGArmDevice) {
+                    m_pBGArm->RemoveAttachable(BGArmDevice, false, false);
+                    m_pFGArm->SetHeldDevice(BGArmDevice);
+                } else if (!m_Inventory.empty()) {
+                    arm->SetHeldDevice(dynamic_cast<HeldDevice*>(SwapNextInventory()));
+                    arm->SetHandPos(m_Pos + RotateOffset(m_HolsterOffset));
 				}
 				anyDropped = true;
 				break;
 			}
+            currentlyFGArm = 0;
 		}
 		if (!anyDropped && !m_Inventory.empty() && !m_pFGArm) {
 			DropAllInventory();
@@ -3776,10 +3784,6 @@ void AHuman::Update()
 
         if (m_Status == STABLE) {
 			if (m_ArmClimbing[BGROUND]) {
-				// Can't climb or crawl with the shield
-				if (m_MoveState != CRAWL || m_ProneState == PRONE) {
-					UnequipBGArm();
-				}
 				m_pBGArm->AddHandTarget("Hand AtomGroup Limb Pos", m_pBGHandGroup->GetLimbPos(m_HFlipped));
 			} else {
 				HeldDevice *heldDevice = GetEquippedItem();
