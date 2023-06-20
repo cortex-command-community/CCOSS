@@ -3449,7 +3449,7 @@ void AHuman::Update()
 
 	if (m_Controller.IsState(WEAPON_DROP) && m_Status != INACTIVE) {
 		bool anyDropped = false;
-        bool currentlyFGArm = 1;
+        bool currentlyFGArm = true;
 
 		for (Arm *arm : { m_pFGArm, m_pBGArm }) {
 			if (!anyDropped && arm && arm->GetHeldDevice()) {
@@ -3463,10 +3463,13 @@ void AHuman::Update()
 
 				arm->SetHandPos(heldDevice->GetPos());
 
-                HeldDevice* BGArmDevice = m_pBGArm->GetHeldDevice();
-                if (currentlyFGArm && m_pBGArm && BGArmDevice) {
-                    m_pBGArm->RemoveAttachable(BGArmDevice, false, false);
-                    m_pFGArm->SetHeldDevice(BGArmDevice);
+                //if a device is in the BG arm then switch it to the FG one
+                if (currentlyFGArm && m_pBGArm) {
+                    HeldDevice* BGArmDevice = m_pBGArm->GetHeldDevice();
+                    if (BGArmDevice) {
+                        m_pBGArm->RemoveAttachable(BGArmDevice, false, false);
+                        m_pFGArm->SetHeldDevice(BGArmDevice);
+                    }
                 } else if (!m_Inventory.empty()) {
                     arm->SetHeldDevice(dynamic_cast<HeldDevice*>(SwapNextInventory()));
                     arm->SetHandPos(m_Pos + RotateOffset(m_HolsterOffset));
@@ -3474,7 +3477,7 @@ void AHuman::Update()
 				anyDropped = true;
 				break;
 			}
-            currentlyFGArm = 0;
+            currentlyFGArm = false;
 		}
 		if (!anyDropped && !m_Inventory.empty() && !m_pFGArm) {
 			DropAllInventory();
