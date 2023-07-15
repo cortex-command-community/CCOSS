@@ -1297,7 +1297,7 @@ bool AHuman::UnequipBGArm() {
 	if (m_pBGArm) {
 		if (HeldDevice *heldDevice = m_pBGArm->GetHeldDevice()) {
 			heldDevice->Deactivate();
-			AddToInventoryBack(m_pBGArm->RemoveAttachable(heldDevice));
+			AddToInventoryFront(m_pBGArm->RemoveAttachable(heldDevice));
 			m_pBGArm->SetHandPos(m_Pos + RotateOffset(m_HolsterOffset));
 			return true;
 		}
@@ -1671,17 +1671,11 @@ void AHuman::ResetAllTimers()
         m_pFGArm->GetHeldDevice()->ResetAllTimers();
 }
 
-
 //////////////////////////////////////////////////////////////////////////////////////////
-// Method:          UpdateMovePath
-//////////////////////////////////////////////////////////////////////////////////////////
-// Description:     Updates the path to move along to the currently set movetarget.
 
-bool AHuman::UpdateMovePath()
+void AHuman::OnNewMovePath()
 {
-    // Do the real path calc; abort and pass along the message if it didn't happen due to throttling
-    if (!Actor::UpdateMovePath())
-        return false;
+    Actor::OnNewMovePath();
 
     // Process the new path we now have, if any
     if (!m_MovePath.empty())
@@ -1715,8 +1709,6 @@ bool AHuman::UpdateMovePath()
             previousPoint = (*lItr);
         }
     }
-
-    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -3022,6 +3014,8 @@ void AHuman::UpdateAI()
 
 void AHuman::PreControllerUpdate()
 {
+    Actor::PreControllerUpdate();
+
 	float deltaTime = g_TimerMan.GetDeltaTimeSecs();
 	float rot = m_Rotation.GetRadAngle();
 
@@ -3087,7 +3081,7 @@ void AHuman::PreControllerUpdate()
     // If the pie menu is on, try to preserve whatever move state we had before it going into effect.
     // This is only done for digital input, where the user needs to use the keyboard to choose pie slices.
     // For analog input, this doesn't matter - the mouse or aiming analog stick controls the pie menu.
-    bool keepOldState = !m_Controller.IsMouseControlled() && !m_Controller.IsGamepadControlled() && m_Controller.IsState(PIE_MENU_ACTIVE);
+    bool keepOldState = m_Controller.IsKeyboardOnlyControlled() && m_Controller.IsState(PIE_MENU_ACTIVE);
 
 	if (!keepOldState) {
         bool crouching = m_Controller.IsState(BODY_CROUCH);
@@ -3147,7 +3141,10 @@ void AHuman::PreControllerUpdate()
             }
         }
         // Disengage the prone state as soon as crouch is released.
-        if (!crouching) { m_ProneState = NOTPRONE; }
+        if (!crouching && m_ProneState != NOTPRONE) { 
+			EquipShieldInBGArm();
+			m_ProneState = NOTPRONE; 
+		}
     }
 
 	////////////////////////////////////
@@ -3299,6 +3296,8 @@ void AHuman::PreControllerUpdate()
 							if (deviceAsFirearm->FiredOnce()) {
 								m_CanActivateBGItem = true;
 								m_TriggerPulled = true;
+							} else {
+								m_CanActivateBGItem = !deviceAsFirearm->CanFire();
 							}
 						}
 					}
@@ -3395,6 +3394,8 @@ void AHuman::PreControllerUpdate()
 					if (deviceAsFirearm->FiredOnce()) {
 						m_CanActivateBGItem = false;
 						m_TriggerPulled = true;
+					} else {
+						m_CanActivateBGItem = deviceAsFirearm->CanFire();
 					}
 				}
 			} else {
@@ -3444,27 +3445,31 @@ void AHuman::PreControllerUpdate()
     // Item dropping logic
 
 	if (m_Controller.IsState(WEAPON_DROP) && m_Status != INACTIVE) {
-		bool anyDropped = false;
+		Arm *dropperArm = nullptr;
 		for (Arm *arm : { m_pFGArm, m_pBGArm }) {
-			if (!anyDropped && arm && arm->GetHeldDevice()) {
+			if (arm && arm->GetHeldDevice()) {
 				HeldDevice *heldDevice = arm->GetHeldDevice();
 				arm->RemoveAttachable(heldDevice, true, false);
+				if (dropperArm) {
+					if (heldDevice) {
+						dropperArm->SetHeldDevice(heldDevice);
+						arm->SetHandPos(dropperArm->GetPos());
+					}
+				} else {
+					heldDevice->SetPos(arm->GetJointPos() + Vector(arm->GetMaxLength() * GetFlipFactor(), 0).RadRotate(adjustedAimAngle));
+					Vector tossVec(1.0F + std::sqrt(std::abs(arm->GetThrowStrength()) / std::sqrt(std::abs(heldDevice->GetMass()) + 1.0F)), RandomNormalNum());
+					heldDevice->SetVel(heldDevice->GetVel() * 0.5F + tossVec.RadRotate(m_AimAngle).GetXFlipped(m_HFlipped));
+					heldDevice->SetAngularVel(heldDevice->GetAngularVel() + m_AngularVel * 0.5F + 3.0F * RandomNormalNum());
 
-				heldDevice->SetPos(arm->GetJointPos() + Vector(arm->GetMaxLength() * GetFlipFactor(), 0).RadRotate(adjustedAimAngle));
-				Vector tossVec(1.0F + std::sqrt(std::abs(arm->GetThrowStrength()) / std::sqrt(std::abs(heldDevice->GetMass()) + 1.0F)), RandomNormalNum());
-				heldDevice->SetVel(heldDevice->GetVel() * 0.5F + tossVec.RadRotate(m_AimAngle).GetXFlipped(m_HFlipped));
-				heldDevice->SetAngularVel(heldDevice->GetAngularVel() + m_AngularVel * 0.5F + 3.0F * RandomNormalNum());
-
-				arm->SetHandPos(heldDevice->GetPos());
-				if (!m_Inventory.empty()) {
-					arm->SetHeldDevice(dynamic_cast<HeldDevice *>(SwapNextInventory()));
-					arm->SetHandPos(m_Pos + RotateOffset(m_HolsterOffset));
+					arm->SetHandPos(heldDevice->GetPos());
 				}
-				anyDropped = true;
-				break;
+				dropperArm = arm;
+			} else if (dropperArm && !m_Inventory.empty()) {
+				dropperArm->SetHeldDevice(dynamic_cast<HeldDevice*>(SwapNextInventory()));
+				dropperArm->SetHandPos(m_Pos + RotateOffset(m_HolsterOffset));
 			}
 		}
-		if (!anyDropped && !m_Inventory.empty() && !m_pFGArm) {
+		if (!dropperArm && !m_Inventory.empty() && !m_pFGArm) {
 			DropAllInventory();
 			if (m_pBGArm) {
 				m_pBGArm->SetHandPos(m_Pos + RotateOffset(m_HolsterOffset));

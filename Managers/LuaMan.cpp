@@ -125,6 +125,7 @@ namespace RTE {
 			RegisterLuaBindingsOfType(EntityLuaBindings, Gib),
 			RegisterLuaBindingsOfType(SystemLuaBindings, Controller),
 			RegisterLuaBindingsOfType(SystemLuaBindings, Timer),
+			RegisterLuaBindingsOfType(SystemLuaBindings, PathRequest),
 			RegisterLuaBindingsOfConcreteType(EntityLuaBindings, Scene),
 			RegisterLuaBindingsOfType(EntityLuaBindings, SceneArea),
 			RegisterLuaBindingsOfType(EntityLuaBindings, SceneLayer),
@@ -282,6 +283,12 @@ namespace RTE {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	thread_local LuaStateWrapper * s_luaStateOverride = nullptr;
+    LuaStateWrapper * LuaMan::GetThreadLuaStateOverride() const {
+		return s_luaStateOverride;
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	void LuaMan::SetThreadLuaStateOverride(LuaStateWrapper * luaState) {
 		s_luaStateOverride = luaState;
 	}
@@ -289,6 +296,13 @@ namespace RTE {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	LuaStateWrapper * LuaMan::GetAndLockFreeScriptState() {
+		if (!g_SettingsMan.GetEnableMultithreadedAI()) {
+			// If multithreaded AI is disabled, all scripts are placed in the master script state
+			bool success = m_MasterScriptState.GetMutex().try_lock();
+			RTEAssert(success, "Our lua state override for our thread already belongs to another thread!")
+			return &m_MasterScriptState;
+		}
+
 		if (s_luaStateOverride) {
 			// We're creating this object in a multithreaded environment, ensure that it's assigned to the same script state as us
 			bool success = s_luaStateOverride->GetMutex().try_lock();
@@ -296,15 +310,43 @@ namespace RTE {
 			return s_luaStateOverride;
 		}
 
-		LuaStatesArray& luaStates = g_LuaMan.GetThreadedScriptStates();
-
 		int ourState = m_LastAssignedLuaState;
 		m_LastAssignedLuaState = (m_LastAssignedLuaState + 1) % c_NumThreadedLuaStates;
 
-		bool success = luaStates[ourState].GetMutex().try_lock();
+		bool success = m_ScriptStates[ourState].GetMutex().try_lock();
 		RTEAssert(success, "Script mutex was already locked while in a non-multithreaded environment!");
 
-		return &luaStates[ourState];;
+		return &m_ScriptStates[ourState];	
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	bool LuaMan::IsScriptThreadSafe(const std::string &scriptPath) {
+		// First check our cache
+		auto itr = m_ScriptThreadSafetyMap.find(scriptPath);
+		if (itr != m_ScriptThreadSafetyMap.end()) {
+			return itr->second;
+		}
+
+		// Actually open the file and check if it has the multithread-safe mark
+		std::ifstream scriptFile = std::ifstream(scriptPath.c_str());
+		if (!scriptFile.good()) {
+			return false;
+		}
+
+		while (!scriptFile.eof()) {
+			char rawLine[512];
+			scriptFile.getline(rawLine, 512);
+			std::string line = rawLine;
+
+			if (line.find("--[[FORCE_SINGLETHREADED]]--", 0) != std::string::npos) {
+				m_ScriptThreadSafetyMap.insert({scriptPath, false});
+				return false;
+			}
+		}
+
+		m_ScriptThreadSafetyMap.insert({scriptPath, true});
+		return true;
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -313,6 +355,30 @@ namespace RTE {
 		m_MasterScriptState.ClearUserModuleCache();
 		for (LuaStateWrapper &luaState : m_ScriptStates) {
 			luaState.ClearUserModuleCache();
+		}
+		m_ScriptThreadSafetyMap.clear();
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void LuaMan::AddLuaScriptCallback(const std::function<void()> &callback) {
+		std::scoped_lock lock(m_ScriptCallbacksMutex);
+		m_ScriptCallbacks.emplace_back(callback);
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void LuaMan::ExecuteLuaScriptCallbacks() {
+		std::vector<std::function<void()>> callbacks;
+		
+		// Move our functions into the local buffer to clear the existing callbacks and to lock for as little time as possible
+		{
+			std::scoped_lock lock(m_ScriptCallbacksMutex);
+			callbacks.swap(m_ScriptCallbacks);
+		}
+		
+		for (const std::function<void()> &callback : callbacks) {
+			callback();
 		}
     }
 
@@ -392,7 +458,7 @@ namespace RTE {
 			}
 			scriptString << " then ";
 		}
-		if (!functionEntityArguments.empty()) { scriptString << "local entityArguments = LuaMan.TempEntities; "; }
+		if (!functionEntityArguments.empty()) { scriptString << "local entityArguments = LuaMan.TempEntities(); "; }
 
 		std::lock_guard<std::recursive_mutex> lock(m_Mutex);
 		// Lock here, even though we also lock in RunScriptString(), to ensure that the temp entity vector isn't stomped by separate threads.
@@ -735,7 +801,7 @@ namespace RTE {
 			return -1;
 		}
 
-		std::string fullPath = System::GetWorkingDirectory() + fileName;
+		std::string fullPath = System::GetWorkingDirectory() + g_PresetMan.GetFullModulePath(fileName);
 		if ((fullPath.find("..") == std::string::npos) && (fullPath.find(System::GetModulePackageExtension()) != std::string::npos)) {
 
 #ifdef _WIN32

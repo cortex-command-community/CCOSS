@@ -54,6 +54,7 @@ namespace RTE {
 		.def("IsPlayerControlled", &Controller::IsPlayerControlled)
 		.def("RelativeCursorMovement", &Controller::RelativeCursorMovement)
 		.def("IsMouseControlled", &Controller::IsMouseControlled)
+		.def("IsKeyboardOnlyControlled", &Controller::IsKeyboardOnlyControlled)
 		.def("IsGamepadControlled", &Controller::IsGamepadControlled)
 		.def("SetState", &Controller::SetState)
 		.def("IsState", &Controller::IsState)
@@ -75,6 +76,7 @@ namespace RTE {
 			luabind::value("AIM_SHARP", ControlState::AIM_SHARP),
 			luabind::value("WEAPON_FIRE", ControlState::WEAPON_FIRE),
 			luabind::value("WEAPON_RELOAD", ControlState::WEAPON_RELOAD),
+			luabind::value("PIE_MENU_OPENED", ControlState::PIE_MENU_OPENED),
 			luabind::value("PIE_MENU_ACTIVE", ControlState::PIE_MENU_ACTIVE),
 			luabind::value("WEAPON_CHANGE_NEXT", ControlState::WEAPON_CHANGE_NEXT),
 			luabind::value("WEAPON_CHANGE_PREV", ControlState::WEAPON_CHANGE_PREV),
@@ -230,5 +232,23 @@ namespace RTE {
 		.def("GetDegRotatedCopy", &Vector::GetDegRotatedCopy)
 		.def("AbsRotateTo", &Vector::AbsRotateTo)
 		.def("SetXY", &Vector::SetXY);
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	LuaBindingRegisterFunctionDefinitionForType(SystemLuaBindings, PathRequest) {
+		using namespace micropather;
+		return luabind::class_<PathRequest>("PathRequest")
+
+		.def_readonly("Path", &PathRequest::path, luabind::return_stl_iterator)
+		.def_readonly("PathLength", &PathRequest::pathLength)
+		.def_readonly("Status", &PathRequest::status)
+		.def_readonly("TotalCost", &PathRequest::totalCost)
+
+		.enum_("Status")[
+			luabind::value("Solved", micropather::MicroPather::SOLVED),
+			luabind::value("NoSolution", micropather::MicroPather::NO_SOLUTION),
+			luabind::value("StartEndSame", micropather::MicroPather::START_END_SAME)
+		];
 	}
 }
