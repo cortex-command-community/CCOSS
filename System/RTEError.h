@@ -30,6 +30,11 @@ namespace RTE {
 		static bool s_CurrentlyAborting; // Flag to prevent a potential recursive fault while attempting to save the game when aborting.
 
 		/// <summary>
+		/// Error handlers for when the game unexpectedly crashes
+		/// </summary>
+		static void SegFaultErrorHandler(int sig);
+
+		/// <summary>
 		/// Pops up a message box dialog in the OS. For debug purposes mostly.
 		/// </summary>
 		/// <param name="message">The string that the message box should display.</param>

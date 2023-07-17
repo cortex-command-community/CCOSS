@@ -13,6 +13,15 @@ namespace RTE {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	void RTEError::SegFaultErrorHandler(int sig) {
+		// TODO - when C++23 is here, use that for stacktraces
+		// This error message is pretty useless otherwise, as it just points at this function
+		// But installing this error handler at least gives us a nice abort message and save games etc
+		RTEAbort("An unexpected fatal error occurred! Please report to a developer");
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	void RTEError::ShowMessageBox(const std::string &message, bool abortMessage) {
 		const char *messageBoxTitle = "RTE Warning! (>_<)";
 		int messageBoxFlags = SDL_MESSAGEBOX_WARNING;

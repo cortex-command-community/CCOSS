@@ -40,6 +40,9 @@
 #include "WindowMan.h"
 #include "NetworkServer.h"
 #include "NetworkClient.h"
+#include "RTEError.h"
+
+#include <signal.h>
 
 extern "C" { FILE __iob_func[3] = { *stdin,*stdout,*stderr }; }
 
@@ -355,6 +358,8 @@ namespace RTE {
 /// Implementation of the main function.
 /// </summary>
 int main(int argc, char **argv) {
+	signal(SIGSEGV, RTEError::SegFaultErrorHandler);
+
 	install_allegro(SYSTEM_NONE, &errno, std::atexit);
 	loadpng_init();
 
