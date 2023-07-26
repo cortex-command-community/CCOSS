@@ -37,7 +37,8 @@ namespace RTE {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	int DataModule::Create(const std::string &moduleName, const ProgressCallback &progressCallback) {
+	int DataModule::Create(const std::string &moduleName, const ProgressCallback &progressCallback, bool failOnError) {
+		m_Name = moduleName;
 		m_FileName = std::filesystem::path(moduleName).generic_string();
 		m_ModuleID = g_PresetMan.GetModuleID(moduleName);
 		m_CrabToHumanSpawnRatio = 0;
@@ -57,7 +58,7 @@ namespace RTE {
 			CheckSupportedGameVersion();
 		}
 
-		if (reader.Create(indexPath, true, progressCallback) >= 0) {
+		if (reader.Create(indexPath, true, progressCallback, !failOnError) >= 0) {
 			int result = Serializable::Create(reader);
 
 			// Print an empty line to separate the end of a module from the beginning of the next one in the loading progress log.
@@ -425,11 +426,18 @@ namespace RTE {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void DataModule::ReloadAllScripts() const {
+	void DataModule::ReloadAllScripts() {
 		for (const PresetEntry &presetListEntry : m_PresetList) {
 			presetListEntry.m_EntityPreset->ReloadScripts();
 		}
 		LoadScripts();
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	void DataModule::ReloadAllEntityPresets() {
+		Clear();
+		Create(m_Name, ProgressCallback());
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

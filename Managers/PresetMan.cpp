@@ -902,12 +902,20 @@ std::string PresetMan::GetEntityDataLocation(std::string type, std::string prese
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PresetMan::ReloadAllScripts() const {
+void PresetMan::ReloadAllScripts() {
 	g_LuaMan.ClearUserModuleCache();
-	for (const DataModule *dataModule : m_pDataModules) {
+	for (DataModule *dataModule : m_pDataModules) {
 		dataModule->ReloadAllScripts();
 	}
 	g_ConsoleMan.PrintString("SYSTEM: Scripts reloaded!");
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PresetMan::ReloadAllEntityPresets() {
+	g_SceneMan.ClearMaterials();
+	LoadAllDataModules();
+	g_ConsoleMan.PrintString("SYSTEM: Entity presets reloaded!");
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -947,7 +955,7 @@ bool PresetMan::ReloadEntityPreset(const std::string &presetName, const std::str
 	Reader reader(presetDataLocation.c_str(), true);
 	while (reader.NextProperty()) {
 		reader.ReadPropName();
-		g_PresetMan.GetEntityPreset(reader);
+		GetEntityPreset(reader);
 	}
 	g_ConsoleMan.PrintString("SYSTEM: Entity preset with name \"" + presetName + "\" of type \"" + className + "\" defined in \"" + actualDataModuleOfPreset + "\" was successfully reloaded");
 

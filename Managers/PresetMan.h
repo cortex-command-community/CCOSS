@@ -431,7 +431,12 @@ public:
     /// <summary>
     /// Reloads all scripted Entity Presets with the latest version of their respective script files.
     /// </summary>
-    void ReloadAllScripts() const;
+    void ReloadAllScripts();
+
+	/// <summary>
+    /// Reloads all Entity Presets with the latest version of their respective ini files.
+    /// </summary>
+    void ReloadAllEntityPresets();
 
 	/// <summary>
 	/// Reloads an Entity preset and all related presets with the latest version of their respective files.

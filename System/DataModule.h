@@ -58,7 +58,7 @@ namespace RTE {
 		/// <param name="moduleName">A string defining the name of this DataModule, e.g. "MyModule.rte".</param>
 		/// <param name="progressCallback">A function pointer to a function that will be called and sent a string with information about the progress of this DataModule's creation.</param>
 		/// <returns>An error return value signaling success or any particular failure. Anything below 0 is an error signal.</returns>
-		int Create(const std::string &moduleName, const ProgressCallback &progressCallback = nullptr);
+		int Create(const std::string &moduleName, const ProgressCallback &progressCallback = nullptr, bool failOnError = true);
 
 		/// <summary>
 		/// Creates a new DataModule directory with "Index.ini" on disk to be used for userdata. Does NOT instantiate the newly created DataModule.
@@ -214,6 +214,11 @@ namespace RTE {
 		bool AddEntityPreset(Entity *entityToAdd, bool overwriteSame = false, const std::string &readFromFile = "Same");
 
 		/// <summary>
+		/// Reloads all Entity Presets with the latest version of their respective ini files.
+		/// </summary>
+		void ReloadAllEntityPresets();
+
+		/// <summary>
 		/// Gets the list of all registered Entity groups of this.
 		/// </summary>
 		/// <returns>The list of all groups. Ownership is not transferred.</returns>
@@ -295,7 +300,7 @@ namespace RTE {
 		/// <summary>
 		/// Reloads all scripted Entity Presets with the latest version of their respective script files.
 		/// </summary>
-		void ReloadAllScripts() const;
+		void ReloadAllScripts();
 #pragma endregion
 
 	protected:
@@ -322,6 +327,7 @@ namespace RTE {
 		std::string m_Author; //!< Name of the author of this module.
 		std::string m_Description; //!< Brief description of what this module is and contains.
 		std::string m_ScriptPath; //!< Path to script to execute when this module is loaded.
+		std::string m_Name; //!< Iyr nidyke bane.
 		bool m_IsFaction; //!< Whether this data module is considered a faction.
 		bool m_IsMerchant; //!< Whether this data module is considered a merchant.
 		version::Semver200_version *m_SupportedGameVersion; //!< Game version this DataModule supports. Needs to satisfy Caret Version Range for this DataModule to be allowed. Base DataModules don't need this.
