@@ -910,7 +910,7 @@ namespace RTE {
 			} else if (KeyPressed(SDLK_o)) {
 				g_TimerMan.SetOneSimUpdatePerFrame(!g_TimerMan.IsOneSimUpdatePerFrame());
 			} else if (KeyPressed(SDLK_F2)) {
-				g_PresetMan.ReloadAllEntityPresets();
+				g_PresetMan.QuickReloadEntityPreset();
 			} else if (KeyPressed(SDLK_F9)) {
 				g_ActivityMan.LoadAndLaunchGame("AutoSave");
 			} else if (g_PerformanceMan.IsShowingPerformanceStats()) {

@@ -528,16 +528,6 @@ MOID SceneMan::GetMOIDPixel(int pixelX, int pixelY, int ignoreTeam)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SceneMan::ClearMaterials() {
-    m_MatNameMap.clear();
-    for (int i = 0; i < c_PaletteEntriesNumber; ++i) {
-        delete m_apMatPalette[i];
-    }
-    m_apMatPalette.fill(nullptr);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 Material const * SceneMan::GetMaterial(const std::string &matName)
 {
     std::map<std::string, unsigned char>::iterator itr = m_MatNameMap.find(matName);
