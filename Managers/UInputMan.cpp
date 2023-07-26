@@ -945,7 +945,8 @@ namespace RTE {
 				g_ConsoleMan.SaveAllText("Console.dump.log");
 			} else if (KeyPressed(SDLK_F4)) {
 				g_ConsoleMan.SaveInputLog("Console.input.log");
-			} else if (KeyPressed(SDLK_F5)) {
+			} else if (KeyPressed(SDLK_F5) && // Allow nullptr activity, to get the nice error message from ActivityMan::SaveCurrentGame() :)
+			           (g_ActivityMan.GetActivity() == nullptr || g_ActivityMan.GetActivity()->GetUserSavesAllowed()) ) {
 				g_ActivityMan.SaveCurrentGame("QuickSave");
 			} else if (KeyPressed(SDLK_F9)) {
 				g_ActivityMan.LoadAndLaunchGame("QuickSave");

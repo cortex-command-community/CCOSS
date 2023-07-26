@@ -19,6 +19,7 @@ namespace RTE {
 		.property("HumanCount", &Activity::GetHumanCount)
 		.property("TeamCount", &Activity::GetTeamCount)
 		.property("Difficulty", &Activity::GetDifficulty, &Activity::SetDifficulty)
+		.property("UserSavesAllowed", &Activity::GetUserSavesAllowed, &Activity::SetUserSavesAllowed)
 
 		.def("DeactivatePlayer", &Activity::DeactivatePlayer)
 		.def("PlayerActive", &Activity::PlayerActive)

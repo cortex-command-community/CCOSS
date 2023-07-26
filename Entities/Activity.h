@@ -709,6 +709,18 @@ namespace RTE {
 		/// </summary>
 		/// <param name="key">The key of the string to load.</param>
 		float LoadNumber(const std::string &key) { return m_SavedValues.m_SavedNumbers.m_Data[key]; };
+
+		/// <summary>
+		// Returns whether user-requested manual save games are allowed, or whether the activity handles all saving itself.
+		/// </summary>
+		/// <returns>Whether manual user saves are allowed.</returns>
+		bool GetUserSavesAllowed() const { return m_UserSavesAllowed; };
+
+		/// <summary>
+		/// Sets whether user-requested manual save games are allowed, or whether the activity handles all saving itself.
+		/// </summary>
+		/// <param name="value">The new value for whether manual user saves are allowed.</param>
+		void SetUserSavesAllowed(bool value) { m_UserSavesAllowed = value; };
 #pragma endregion
 
 	protected:
@@ -758,6 +770,8 @@ namespace RTE {
 		Controller m_PlayerController[Players::MaxPlayerCount]; //!< The Controllers of all the players for the GUIs.
 
 		Timer m_MessageTimer[Players::MaxPlayerCount]; //!< Message timer for each player.
+
+		bool m_UserSavesAllowed; //!< Whether user savegames (i.e quicksaves and autosaves) are permitted, or whether this activity will handle all savegames itself.
 
 		/// <summary>
 		/// Generic additional saved strings/numbers, which are used for scripts primarily.

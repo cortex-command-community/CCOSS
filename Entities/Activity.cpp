@@ -32,6 +32,7 @@ void Activity::Clear() {
 		m_InCampaignStage = -1;
 		m_PlayerCount = 1;
 		m_TeamCount = 1;
+		m_UserSavesAllowed = true;
 
 		for (int player = Players::PlayerOne; player < Players::MaxPlayerCount; ++player) {
 			// Player 1 is active by default, for the editor etc
@@ -92,6 +93,7 @@ void Activity::Clear() {
 		m_InCampaignStage = reference.m_InCampaignStage;
 		m_PlayerCount = reference.m_PlayerCount;
 		m_TeamCount = reference.m_TeamCount;
+		m_UserSavesAllowed = reference.m_UserSavesAllowed;
 
 		for (int player = Players::PlayerOne; player < Players::MaxPlayerCount; ++player) {
 			m_Team[player] = reference.m_Team[player];
@@ -211,6 +213,8 @@ void Activity::Clear() {
 			}
 		} else if (propName == "GenericSavedValues") {
 			reader >> m_SavedValues;
+		} else if (propName == "UserSavesAllowed") {
+			reader >> m_UserSavesAllowed;
 		} else {
 			return Entity::ReadProperty(propName, reader);
 		}
@@ -222,54 +226,39 @@ void Activity::Clear() {
 	int Activity::Save(Writer &writer) const {
 		Entity::Save(writer);
 
-		writer.NewProperty("Description");
-		writer << m_Description;
-		writer.NewProperty("SceneName");
-		writer << m_SceneName;
-		writer.NewProperty("MaxPlayerSupport");
-		writer << m_MaxPlayerSupport;
-		writer.NewProperty("MinTeamsRequired");
-		writer << m_MinTeamsRequired;
-		writer.NewProperty("Difficulty");
-		writer << m_Difficulty;
-		writer.NewProperty("CraftOrbitAtTheEdge");
-		writer << m_CraftOrbitAtTheEdge;
-		writer.NewProperty("InCampaignStage");
-		writer << m_InCampaignStage;
-		writer.NewProperty("ActivityState");
-		writer << m_ActivityState;
+		writer.NewPropertyWithValue("Description", m_Description);
+		writer.NewPropertyWithValue("SceneName", m_SceneName);
+		writer.NewPropertyWithValue("MaxPlayerSupport", m_MaxPlayerSupport);
+		writer.NewPropertyWithValue("MinTeamsRequired", m_MinTeamsRequired);
+		writer.NewPropertyWithValue("Difficulty", m_Difficulty);
+		writer.NewPropertyWithValue("CraftOrbitAtTheEdge", m_CraftOrbitAtTheEdge);
+		writer.NewPropertyWithValue("InCampaignStage", m_InCampaignStage);
+		writer.NewPropertyWithValue("ActivityState", m_ActivityState);
+		writer.NewPropertyWithValue("UserSavesAllowed", m_UserSavesAllowed);
 
 		for (int player = Players::PlayerOne; player < Players::MaxPlayerCount; player++) {
 			std::string playerNum = std::to_string(player + 1);
 			if (m_IsActive[player]) {
-				writer.NewProperty("TeamOfPlayer" + playerNum);
-				writer << m_Team[player];
-				writer.NewProperty("FundsContributionOfPlayer" + playerNum);
-				writer << m_FundsContribution[player];
-				writer.NewProperty("TeamFundsShareOfPlayer" + playerNum);
-				writer << m_TeamFundsShare[player];
-				writer.NewProperty("Player" + playerNum + "IsHuman");
-				writer << m_IsHuman[player];
+				writer.NewPropertyWithValue("TeamOfPlayer" + playerNum, m_Team[player]);
+				writer.NewPropertyWithValue("FundsContributionOfPlayer" + playerNum, m_FundsContribution[player]);
+				writer.NewPropertyWithValue("TeamFundsShareOfPlayer" + playerNum, m_TeamFundsShare[player]);
+				writer.NewPropertyWithValue("Player" + playerNum + "IsHuman", m_IsHuman[player]);
 			} else {
-				writer.NewProperty("TeamOfPlayer" + playerNum);
-				writer << Teams::NoTeam;
+				writer.NewPropertyWithValue("TeamOfPlayer" + playerNum, Teams::NoTeam);
 			}
 		}
 
 		for (int team = Teams::TeamOne; team < Teams::MaxTeamCount; team++) {
 			std::string teamNum = std::to_string(team + 1);
 			if (m_TeamActive[team]) {
-				writer.NewProperty("Team" + teamNum + "Funds");
-				writer << m_TeamFunds[team];
-				writer.NewProperty("Team" + teamNum + "Name");
-				writer << m_TeamNames[team];
+				writer.NewPropertyWithValue("Team" + teamNum + "Funds", m_TeamFunds[team]);
+				writer.NewPropertyWithValue("Team" + teamNum + "Name", m_TeamNames[team]);
 				writer.NewProperty("Team" + teamNum + "Icon");
 				m_TeamIcons[team].SavePresetCopy(writer);
 			}
 		}
 
-		writer.NewProperty("GenericSavedValues");
-		writer << m_SavedValues;
+		writer.NewPropertyWithValue("GenericSavedValues", m_SavedValues);
 
 		return 0;
 	}
