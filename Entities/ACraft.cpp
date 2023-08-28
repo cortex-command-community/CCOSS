@@ -564,7 +564,6 @@ bool ACraft::HandlePieCommand(PieSlice::SliceType pieSliceIndex) {
         } else {
             return Actor::HandlePieCommand(pieSliceIndex);
         }
-        m_StuckTimer.Reset();
     }
     return false;
 }
@@ -801,22 +800,6 @@ float ACraft::GetCollectedInventoryMass() const {
 	}
 	return inventoryMass;
 }
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////////////////////////////////
-// Virtual method:  OnMOHit
-//////////////////////////////////////////////////////////////////////////////////////////
-// Description:     Defines what should happen when this MovableObject hits another MO.
-//                  This is called by the owned Atom/AtomGroup of this MovableObject during
-//                  travel.
-
-bool ACraft::OnMOHit(MovableObject *pOtherMO)
-{
-    // Don't terminate, continue travel
-    return false;
-}
-
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

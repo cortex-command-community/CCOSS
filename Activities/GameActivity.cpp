@@ -1506,7 +1506,8 @@ void GameActivity::Update()
                 m_PlayerController[player].RelativeCursorMovement(m_ObservationTarget[player], 1.2f);
             }
             // Set the view to the observation position
-            g_CameraMan.SetScrollTarget(m_ObservationTarget[player], 0.1, g_SceneMan.ForceBounds(m_ObservationTarget[player]), ScreenOfPlayer(player));
+            g_SceneMan.ForceBounds(m_ObservationTarget[player]);
+            g_CameraMan.SetScrollTarget(m_ObservationTarget[player], 0.1, ScreenOfPlayer(player));
         }
 
         ///////////////////////////////////////////////////
@@ -1600,8 +1601,8 @@ void GameActivity::Update()
 			}
 
             // Set the view to the cursor pos
-            bool wrapped = g_SceneMan.ForceBounds(m_ActorCursor[player]);
-            g_CameraMan.SetScrollTarget(m_ActorCursor[player], 0.1, wrapped, ScreenOfPlayer(player));
+            g_SceneMan.ForceBounds(m_ActorCursor[player]);
+            g_CameraMan.SetScrollTarget(m_ActorCursor[player], 0.1, ScreenOfPlayer(player));
 
             // Draw the actor's waypoints
             m_ControlledActor[player]->DrawWaypoints(true);
@@ -1678,8 +1679,8 @@ void GameActivity::Update()
 
             // Set the view to the actor pos
 			Vector scrollPos = Vector(m_ControlledActor[player]->GetPos());
-            wrapped = g_SceneMan.ForceBounds(scrollPos);
-            g_CameraMan.SetScrollTarget(scrollPos, 0.1, wrapped, ScreenOfPlayer(player));
+            g_SceneMan.ForceBounds(scrollPos);
+            g_CameraMan.SetScrollTarget(scrollPos, 0.1, ScreenOfPlayer(player));
 
             // Disable the actor's controller
             m_ControlledActor[player]->GetController()->SetDisabled(true);
@@ -1854,7 +1855,7 @@ void GameActivity::Update()
 				m_LandingZone[player].m_Y -= lzOffsetY;
 			}
 
-            bool wrapped = g_SceneMan.ForceBounds(m_LandingZone[player]);
+            g_SceneMan.ForceBounds(m_LandingZone[player]);
 
             // Interpolate the LZ altitude to the height of the highest terrain point at the player-chosen X
             float prevHeight = m_LandingZone[player].m_Y;
@@ -1863,7 +1864,7 @@ void GameActivity::Update()
 
             // Set the view to a little above the LZ position
             Vector viewTarget(m_LandingZone[player].m_X, m_LandingZone[player].m_Y - (g_FrameMan.GetPlayerScreenHeight() / 4));
-            g_CameraMan.SetScrollTarget(viewTarget, 0.1, wrapped, ScreenOfPlayer(player));
+            g_CameraMan.SetScrollTarget(viewTarget, 0.1, ScreenOfPlayer(player));
         }
 
         ////////////////////////////
@@ -1874,7 +1875,7 @@ void GameActivity::Update()
             // Continuously deathwatch message
             g_FrameMan.SetScreenText("Lost control of remote body!", ScreenOfPlayer(player));
             // Don't move anything, just stay put watching the death funnies
-            g_CameraMan.SetScrollTarget(m_DeathViewTarget[player], 0.1, false, ScreenOfPlayer(player));
+            g_CameraMan.SetScrollTarget(m_DeathViewTarget[player], 0.1, ScreenOfPlayer(player));
         }
 
         ////////////////////////////////////////////////////
@@ -1883,7 +1884,7 @@ void GameActivity::Update()
 		// and double scrolling will cause CC gitch when we'll cross the seam
 		else if (m_ControlledActor[player] && m_ActivityState != ActivityState::Editing && m_ActivityState != ActivityState::PreGame)
         {
-            g_CameraMan.SetScrollTarget(m_ControlledActor[player]->GetViewPoint(), 0.1, m_ControlledActor[player]->DidWrap(), ScreenOfPlayer(player));
+            g_CameraMan.SetScrollTarget(m_ControlledActor[player]->GetViewPoint(), 0.1, ScreenOfPlayer(player));
         }
 
 		if (m_ControlledActor[player] && m_ViewState[player] != ViewState::DeathWatch && m_ViewState[player] != ViewState::ActorSelect && m_ViewState[player] != ViewState::AIGoToPoint && m_ViewState[player] != ViewState::UnitSelectCircle) {
@@ -2189,8 +2190,8 @@ void GameActivity::DrawGUI(BITMAP *pTargetBitmap, const Vector &targetPos, int w
             m_PlayerController[player].RelativeCursorMovement(m_ActorCursor[player]);
 
             // Set the view to the cursor pos
-            bool wrapped = g_SceneMan.ForceBounds(m_ActorCursor[player]);
-            g_CameraMan.SetScrollTarget(m_ActorCursor[player], 0.1, wrapped, ScreenOfPlayer(player));
+            g_SceneMan.ForceBounds(m_ActorCursor[player]);
+            g_CameraMan.SetScrollTarget(m_ActorCursor[player], 0.1, ScreenOfPlayer(player));
 
         }
         //TODO_MULTITHREAD

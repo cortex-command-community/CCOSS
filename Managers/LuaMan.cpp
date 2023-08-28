@@ -58,13 +58,14 @@ namespace RTE {
 				.def("RangeRand", &LuaStateWrapper::RangeRand)
 				.def("PosRand", &LuaStateWrapper::PosRand)
 				.def("NormalRand", &LuaStateWrapper::NormalRand)
-				.def("GetDirectoryList", &LuaMan::DirectoryList, luabind::return_stl_iterator)
-				.def("GetFileList", &LuaMan::FileList, luabind::return_stl_iterator)
-				.def("FileOpen", &LuaMan::FileOpen)
-				.def("FileClose", &LuaMan::FileClose)
-				.def("FileReadLine", &LuaMan::FileReadLine)
-				.def("FileWriteLine", &LuaMan::FileWriteLine)
-				.def("FileEOF", &LuaMan::FileEOF),
+				.def("GetDirectoryList", &LuaStateWrapper::DirectoryList, luabind::return_stl_iterator)
+				.def("GetFileList", &LuaStateWrapper::FileList, luabind::return_stl_iterator)
+				.def("FileExists", &LuaStateWrapper::FileExists)
+				.def("FileOpen", &LuaStateWrapper::FileOpen)
+				.def("FileClose", &LuaStateWrapper::FileClose)
+				.def("FileReadLine", &LuaStateWrapper::FileReadLine)
+				.def("FileWriteLine", &LuaStateWrapper::FileWriteLine)
+				.def("FileEOF", &LuaStateWrapper::FileEOF),
 
 			luabind::def("DeleteEntity", &LuaAdaptersUtility::DeleteEntity, luabind::adopt(_1)), // NOT a member function, so adopting _1 instead of the _2 for the first param, since there's no "this" pointer!!
 			luabind::def("Lerp", (float(*)(float, float, float, float, float)) &Lerp),
@@ -220,6 +221,10 @@ namespace RTE {
 			"\n"
 			// Override "dofile" to be able to account for Data/ or Mods/ directory.
 			"OriginalDoFile = dofile; dofile = function(filePath) filePath = PresetMan:GetFullModulePath(filePath); if filePath ~= '' then return OriginalDoFile(filePath); end end;"
+			// Internal helper functions to add callbacks for async pathing requests
+			"_AsyncPathCallbacks = {};"
+			"_AddAsyncPathCallback = function(id, callback) _AsyncPathCallbacks[id] = callback; end\n"
+			"_TriggerAsyncPathCallback = function(id, param) if _AsyncPathCallbacks[id] ~= nil then _AsyncPathCallbacks[id](param); _AsyncPathCallbacks[id] = nil; end end\n"
 		);
 	}
 
@@ -252,6 +257,19 @@ namespace RTE {
 	double LuaStateWrapper::PosRand() {
 		return m_RandomGenerator.RandomNum<double>();
 	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Passthrough LuaMan Functions
+	const std::vector<std::string>& LuaStateWrapper::DirectoryList(const std::string& relativeDirectory) { return g_LuaMan.DirectoryList(relativeDirectory); }
+	const std::vector<std::string>& LuaStateWrapper::FileList(const std::string& relativeDirectory) { return g_LuaMan.FileList(relativeDirectory); }
+	bool LuaStateWrapper::FileExists(const std::string &fileName) { return g_LuaMan.FileExists(fileName); }
+	int LuaStateWrapper::FileOpen(const std::string& fileName, const std::string& accessMode) { return g_LuaMan.FileOpen(fileName, accessMode); }
+	void LuaStateWrapper::FileClose(int fileIndex) { return g_LuaMan.FileClose(fileIndex); }
+	void LuaStateWrapper::FileCloseAll() { return g_LuaMan.FileCloseAll(); }
+	std::string LuaStateWrapper::FileReadLine(int fileIndex) { return g_LuaMan.FileReadLine(fileIndex); }
+	void LuaStateWrapper::FileWriteLine(int fileIndex, const std::string& line) { return g_LuaMan.FileWriteLine(fileIndex, line); }
+	bool LuaStateWrapper::FileEOF(int fileIndex) { return g_LuaMan.FileEOF(fileIndex); }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -295,13 +313,15 @@ namespace RTE {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	thread_local LuaStateWrapper* s_currentLuaState = nullptr;
+	LuaStateWrapper* LuaMan::GetThreadCurrentLuaState() const {
+		return s_currentLuaState;
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	LuaStateWrapper * LuaMan::GetAndLockFreeScriptState() {
-		if (!g_SettingsMan.GetEnableMultithreadedAI()) {
-			// If multithreaded AI is disabled, all scripts are placed in the master script state
-			bool success = m_MasterScriptState.GetMutex().try_lock();
-			RTEAssert(success, "Our lua state override for our thread already belongs to another thread!")
-			return &m_MasterScriptState;
-		}
+		RTEAssert(g_SettingsMan.GetEnableMultithreadedLua(), "Trying to use a threaded script state while multithreaded lua is disabled!")
 
 		if (s_luaStateOverride) {
 			// We're creating this object in a multithreaded environment, ensure that it's assigned to the same script state as us
@@ -322,6 +342,10 @@ namespace RTE {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	bool LuaMan::IsScriptThreadSafe(const std::string &scriptPath) {
+		if (!g_SettingsMan.GetEnableMultithreadedLua()) {
+			return false;
+		}
+		
 		// First check our cache
 		auto itr = m_ScriptThreadSafetyMap.find(scriptPath);
 		if (itr != m_ScriptThreadSafetyMap.end()) {
@@ -334,19 +358,21 @@ namespace RTE {
 			return false;
 		}
 
+		std::string::size_type commentPos;
+		bool inBlockComment = false;
 		while (!scriptFile.eof()) {
 			char rawLine[512];
 			scriptFile.getline(rawLine, 512);
 			std::string line = rawLine;
 
-			if (line.find("--[[FORCE_SINGLETHREADED]]--", 0) != std::string::npos) {
-				m_ScriptThreadSafetyMap.insert({scriptPath, false});
-				return false;
+			if (line.find("--[[MULTITHREAD]]--", 0) != std::string::npos) {
+				m_ScriptThreadSafetyMap.insert({scriptPath, true});
+				return true;
 			}
 		}
 
-		m_ScriptThreadSafetyMap.insert({scriptPath, true});
-		return true;
+		m_ScriptThreadSafetyMap.insert({scriptPath, false});
+		return false;
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -460,8 +486,9 @@ namespace RTE {
 		}
 		if (!functionEntityArguments.empty()) { scriptString << "local entityArguments = LuaMan.TempEntities(); "; }
 
-		std::lock_guard<std::recursive_mutex> lock(m_Mutex);
 		// Lock here, even though we also lock in RunScriptString(), to ensure that the temp entity vector isn't stomped by separate threads.
+		std::lock_guard<std::recursive_mutex> lock(m_Mutex);
+		s_currentLuaState = this;
 
 		scriptString << functionName + "(";
 		if (!selfObjectName.empty()) { scriptString << selfObjectName; }
@@ -499,6 +526,7 @@ namespace RTE {
 		int error = 0;
 
 		std::lock_guard<std::recursive_mutex> lock(m_Mutex);
+		s_currentLuaState = this;
 
 		lua_pushcfunction(m_State, &AddFileAndLineToError);
 		// Load the script string onto the stack and then execute it with pcall. Pcall will call the file and line error handler if there's an error by pointing 2 up the stack to it.
@@ -524,6 +552,7 @@ namespace RTE {
 		int status = 0;
 
 		std::lock_guard<std::recursive_mutex> lock(m_Mutex);
+		s_currentLuaState = this;
 
 		lua_pushcfunction(m_State, &AddFileAndLineToError);
 		functionObject->GetLuabindObject()->push(m_State);
@@ -587,6 +616,7 @@ namespace RTE {
 		int error = 0;
 
 		std::lock_guard<std::recursive_mutex> lock(m_Mutex);
+		s_currentLuaState = this;
 
 		lua_pushcfunction(m_State, &AddFileAndLineToError);
 		SetLuaPath(fullScriptPath);
@@ -614,6 +644,7 @@ namespace RTE {
 		}
 
 		std::lock_guard<std::recursive_mutex> lock(m_Mutex);
+		s_currentLuaState = this;
 
 		for (const std::string &functionName : functionNamesToLookFor) {
 			luabind::object functionObject = luabind::globals(m_State)[functionName];
@@ -779,6 +810,17 @@ namespace RTE {
 			if (directoryEntry.is_regular_file()) { filePaths.emplace_back(directoryEntry.path().filename().generic_string()); }
 		}
 		return filePaths;
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	bool LuaMan::FileExists(const std::string &fileName) {
+		std::string fullPath = System::GetWorkingDirectory() + g_PresetMan.GetFullModulePath(fileName);
+		if ((fullPath.find("..") == std::string::npos) && (fullPath.find(System::GetModulePackageExtension()) != std::string::npos)) {
+			return std::filesystem::exists(fullPath);
+		}
+
+		return false;
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

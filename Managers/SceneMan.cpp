@@ -137,6 +137,8 @@ int SceneMan::LoadScene(Scene *pNewScene, bool placeObjects, bool placeUnits) {
 	g_PostProcessMan.ClearScenePostEffects();
 
 	if (m_pCurrentScene) {
+        // Ensure all async pathing requests are complete
+        m_pCurrentScene->BlockUntilAllPathingRequestsComplete();
 		delete m_pCurrentScene;
 		m_pCurrentScene = nullptr;
 	}
@@ -431,6 +433,9 @@ unsigned char SceneMan::GetTerrMatter(int pixelX, int pixelY)
     if (m_pDebugLayer && m_DrawPixelCheckVisualizations) { m_pDebugLayer->SetPixel(pixelX, pixelY, 5); }
 
     BITMAP *pTMatBitmap = m_pCurrentScene->GetTerrain()->GetMaterialBitmap();
+	if (pTMatBitmap == nullptr) {
+		return g_MaterialAir;
+	}
 
     // If it's still below or to the sides out of bounds after
     // what is supposed to be wrapped, shit is out of bounds.
@@ -2713,7 +2718,7 @@ void SceneMan::Draw(BITMAP *targetBitmap, BITMAP *targetGUIBitmap, const Vector 
 
             // TODO_MULTITHREAD
 			//g_MovableMan.DrawHUD(targetGUIBitmap, targetPos, m_LastUpdatedScreen);
-			g_PrimitiveMan.DrawPrimitives(m_LastUpdatedScreen, targetGUIBitmap, targetPos);
+            //g_PrimitiveMan.DrawPrimitives(m_LastUpdatedScreen, targetGUIBitmap, targetPos);
 			g_ActivityMan.GetActivity()->DrawGUI(targetGUIBitmap, targetPos, m_LastUpdatedScreen);
 
 			if (m_pDebugLayer) {

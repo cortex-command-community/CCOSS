@@ -13,6 +13,7 @@
 
 #include "MovableObject.h"
 
+#include "ActivityMan.h"
 #include "PresetMan.h"
 #include "SceneMan.h"
 #include "ConsoleMan.h"
@@ -70,7 +71,6 @@ void MovableObject::Clear()
     m_MOID = g_NoMOID;
     m_RootMOID = g_NoMOID;
     m_HasEverBeenAddedToMovableMan = false;
-	m_ExistsInMovableMan = false;
     m_MOIDFootprint = 0;
     m_AlreadyHitBy.clear();
 	m_VelOscillations = 0;
@@ -81,6 +81,7 @@ void MovableObject::Clear()
     m_AllLoadedScripts.clear();
     m_FunctionsAndScripts.clear();
     m_ThreadedLuaState = nullptr;
+    m_HasSinglethreadedScripts = false;
     m_ScriptObjectName.clear();
     m_ScreenEffectFile.Reset();
     m_pScreenEffect = 0;
@@ -529,7 +530,7 @@ void MovableObject::Destroy(bool notInherited) {
         }
 
         if (m_HasSinglethreadedScripts) {
-            // Shouldn't ever happen, but lets check just in case
+            // Shouldn't ever happen (destruction is delayed in movableman to happen in singlethreaded manner), but lets check just in case
             if (g_LuaMan.GetThreadLuaStateOverride() || !g_LuaMan.GetMasterScriptState().GetMutex().try_lock()) {
                 RTEAbort("Failed to destroy object scripts for " + GetModuleAndPresetName() + ". Please report this to a developer.");
             } else {
@@ -639,14 +640,7 @@ int MovableObject::InitializeObjectScripts() {
     }
 
     if (m_HasSinglethreadedScripts) {
-        // There's potentially a deadlock if thread-safe scripts construct objects that are single-threaded
-        if (g_LuaMan.GetThreadLuaStateOverride() || !g_LuaMan.GetMasterScriptState().GetMutex().try_lock()) {
-            m_ScriptObjectName = "ERROR";
-            RTEAbort("Failed to initialize object scripts for " + GetModuleAndPresetName() + ", due to a multithreaded script creating a non-thread-safe object. Please don't do this!");
-            return -1;
-        }
-
-        std::lock_guard<std::recursive_mutex> lock(g_LuaMan.GetMasterScriptState().GetMutex(), std::adopt_lock);
+        std::lock_guard<std::recursive_mutex> lock(g_LuaMan.GetMasterScriptState().GetMutex());
         createScriptedObjectInState(g_LuaMan.GetMasterScriptState());
     }
 
@@ -687,7 +681,7 @@ void MovableObject::EnableOrDisableAllScripts(bool enableScripts) {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int MovableObject::RunScriptedFunctionInAppropriateScripts(const std::string &functionName, bool runOnDisabledScripts, bool stopOnError, const std::vector<const Entity *> &functionEntityArguments, const std::vector<std::string_view> &functionLiteralArguments) {
+int MovableObject::RunScriptedFunctionInAppropriateScripts(const std::string &functionName, bool runOnDisabledScripts, bool stopOnError, const std::vector<const Entity *> &functionEntityArguments, const std::vector<std::string_view> &functionLiteralArguments, ThreadScriptsToRun scriptsToRun) {
     int status = 0;
 
     auto itr = m_FunctionsAndScripts.find(functionName);
@@ -701,7 +695,15 @@ int MovableObject::RunScriptedFunctionInAppropriateScripts(const std::string &fu
 
     if (status >= 0) {
         for (const std::unique_ptr<LuabindObjectWrapper> &functionObjectWrapper : itr->second) {
-            if (runOnDisabledScripts || m_AllLoadedScripts.at(functionObjectWrapper->GetFilePath()) == true) {
+            bool scriptIsThreadSafe = g_LuaMan.IsScriptThreadSafe(functionObjectWrapper->GetFilePath());
+            bool scriptIsSuitableForThread = scriptsToRun == ThreadScriptsToRun::SingleThreaded ? !scriptIsThreadSafe :
+                                             scriptsToRun == ThreadScriptsToRun::MultiThreaded  ? scriptIsThreadSafe :
+                                                                                                  true;
+            if (!scriptIsSuitableForThread) {
+                continue;
+            }
+
+            if (runOnDisabledScripts || m_AllLoadedScripts.at(functionObjectWrapper->GetFilePath())) {
                 LuaStateWrapper& usedState = GetAndLockStateForScript(functionObjectWrapper->GetFilePath());
                 std::lock_guard<std::recursive_mutex> lock(usedState.GetMutex(), std::adopt_lock);   
 				status = usedState.RunScriptFunctionObject(functionObjectWrapper.get(), "_ScriptedObjects", std::to_string(m_UniqueID), functionEntityArguments, functionLiteralArguments);
@@ -755,6 +757,11 @@ MovableObject::MovableObject(const MovableObject &reference):
 
 }
 */
+
+void MovableObject::SetTeam(int team) {
+	SceneObject::SetTeam(team);
+	if (Activity *activity = g_ActivityMan.GetActivity()) { activity->ForceSetTeamAsActive(team); }
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Virtual method:  GetAltitude
@@ -822,12 +829,7 @@ bool MovableObject::OnMOHit(HitData &hd)
     if (hd.RootBody[HITOR] != hd.RootBody[HITEE] && (hd.Body[HITOR] == this || hd.Body[HITEE] == this)) {
         RunScriptedFunctionInAppropriateScripts("OnCollideWithMO", false, false, {hd.Body[hd.Body[HITOR] == this ? HITEE : HITOR], hd.RootBody[hd.Body[HITOR] == this ? HITEE : HITOR]});
     }
-    return hd.Terminate[hd.RootBody[HITOR] == this ? HITOR : HITEE] = OnMOHit(hd.RootBody[hd.RootBody[HITOR] == this ? HITEE : HITOR]);
-}
-
-bool MovableObject::OnMOHit(MovableObject *pOtherMO) {
-    if (pOtherMO != this) { RunScriptedFunctionInAppropriateScripts("OnCollideWithMO", false, false, {pOtherMO, pOtherMO ? pOtherMO->GetRootParent() : nullptr}); }
-    return false;
+	return hd.Terminate[hd.RootBody[HITOR] == this ? HITOR : HITEE] = false;
 }
 
 unsigned char MovableObject::HitWhatTerrMaterial() const
@@ -994,20 +996,6 @@ void MovableObject::PostTravel()
 	m_DistanceTravelled += m_Vel.GetMagnitude() * c_PPM * g_TimerMan.GetDeltaTimeSecs();
 }
 
-/*
-//////////////////////////////////////////////////////////////////////////////////////////
-// Pure v. method:  Update
-//////////////////////////////////////////////////////////////////////////////////////////
-// Description:     Updates this MovableObject. Supposed to be done every frame. This also
-//                  applies and clear the accumulated impulse forces (impulses), and the
-//                  transferred forces of MOs attached to this.
-
-void MovableObject::Update()
-{
-    return;
-}
-*/
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void MovableObject::Update() {
@@ -1018,7 +1006,7 @@ void MovableObject::Update() {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int MovableObject::UpdateScripts() {
+int MovableObject::UpdateScripts(ThreadScriptsToRun scriptsToRun) {
 	m_SimUpdatesSinceLastScriptedUpdate++;
 
 	if (m_AllLoadedScripts.empty()) {
@@ -1037,7 +1025,17 @@ int MovableObject::UpdateScripts() {
 	m_SimUpdatesSinceLastScriptedUpdate = 0;
 
 	if (status >= 0) {
-		status = RunScriptedFunctionInAppropriateScripts("Update", false, true);
+		status = RunScriptedFunctionInAppropriateScripts("Update", false, true, {}, {}, scriptsToRun);
+
+        // Perform our synced updates to let multithreaded scripts do anything that interacts with stuff in a non-const way
+        // This is identical to non-multithreaded script's Update()
+        // TODO - in future, enforce that everything in MultiThreaded Update() is const, so non-const actions must be performed in SyncedUpdate
+        // This would require a bunch of Lua binding fuckery, but eventually maybe it'd be possible.
+        // I wonder if we can do some SFINAE magic to make the luabindings automagically do a no-op with const objects, to avoid writing the bindings twice
+        if (status >= 0 && scriptsToRun == ThreadScriptsToRun::SingleThreaded) {
+            // If we're in a SingleThreaded context, we run the MultiThreaded scripts synced updates:
+            status = RunScriptedFunctionInAppropriateScripts("SyncedUpdate", false, true, {}, {}, ThreadScriptsToRun::MultiThreaded); // This isn't a typo!
+        }
 	}
 
 	return status;
@@ -1180,7 +1178,10 @@ bool MovableObject::DrawToTerrain(SLTerrain *terrain) {
 		g_SceneMan.RegisterTerrainChange(tempBitmapPos.GetFloorIntX(), tempBitmapPos.GetFloorIntY(), tempBitmap->w, tempBitmap->h, ColorKeys::g_MaskColor, false);
 	} else {
 		Draw(terrain->GetFGColorBitmap(), Vector(), DrawMode::g_DrawColor, true);
-		Draw(terrain->GetMaterialBitmap(), Vector(), DrawMode::g_DrawMaterial, true);
+		Material const *terrMat = g_SceneMan.GetMaterialFromID(g_SceneMan.GetTerrain()->GetMaterialPixel(m_Pos.GetFloorIntX(), m_Pos.GetFloorIntY()));
+		if (GetMaterial()->GetPriority() > terrMat->GetPriority()) {
+			Draw(terrain->GetMaterialBitmap(), Vector(), DrawMode::g_DrawMaterial, true);
+		}
 		g_SceneMan.RegisterTerrainChange(m_Pos.GetFloorIntX(), m_Pos.GetFloorIntY(), 1, 1, DrawMode::g_DrawColor, false);
 	}
 	return true;

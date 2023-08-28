@@ -63,7 +63,7 @@ friend struct EntityLuaBindings;
 
 public:
 
-	ScriptFunctionNames("Create", "Destroy", "Update", "OnScriptDisable", "OnScriptEnable", "OnCollideWithTerrain", "OnCollideWithMO", "WhilePieMenuOpen", "OnGameSave");
+	ScriptFunctionNames("Create", "Destroy", "Update", "SyncedUpdate", "OnScriptDisable", "OnScriptEnable", "OnCollideWithTerrain", "OnCollideWithMO", "WhilePieMenuOpen", "OnGameSave");
 	SerializableOverrideMethods;
 	ClassInfoGetters;
 
@@ -224,7 +224,7 @@ enum MOType
     /// <param name="functionEntityArguments">Optional vector of entity pointers that should be passed into the Lua function. Their internal Lua states will not be accessible. Defaults to empty.</param>
     /// <param name="functionLiteralArguments">Optional vector of strings, that should be passed into the Lua function. Entries must be surrounded with escaped quotes (i.e.`\"`) they'll be passed in as-is, allowing them to act as booleans, etc.. Defaults to empty.</param>
     /// <returns>An error return value signaling success or any particular failure. Anything below 0 is an error signal.</returns>
-    int RunScriptedFunctionInAppropriateScripts(const std::string &functionName, bool runOnDisabledScripts = false, bool stopOnError = false, const std::vector<const Entity *> &functionEntityArguments = std::vector<const Entity *>(), const std::vector<std::string_view> &functionLiteralArguments = std::vector<std::string_view>());
+    int RunScriptedFunctionInAppropriateScripts(const std::string &functionName, bool runOnDisabledScripts = false, bool stopOnError = false, const std::vector<const Entity *> &functionEntityArguments = std::vector<const Entity *>(), const std::vector<std::string_view> &functionLiteralArguments = std::vector<std::string_view>(), ThreadScriptsToRun scriptsToRun = ThreadScriptsToRun::Both);
 #pragma endregion
 
 
@@ -446,12 +446,6 @@ enum MOType
     /// <returns>Whether or not this MovableObject has ever been added to MovableMan.</returns>
     bool HasEverBeenAddedToMovableMan() const { return m_HasEverBeenAddedToMovableMan; }
 
-	/// <summary>
-	/// Returns whether or not this MovableObject exists in MovableMan, accounting for removal from MovableMan.
-	/// </summary>
-	/// <returns>Whether or not this MovableObject currently exists in MovableMan.</returns>
-	bool ExistsInMovableMan() const { return m_ExistsInMovableMan; }
-
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Virtual method:  GetSharpness
@@ -544,6 +538,11 @@ enum MOType
 
     bool GetsHitByMOs() const { return m_GetsHitByMOs; }
 
+	/// <summary>
+	/// Sets the team of this MovableObject.
+	/// </summary>
+	/// <param name="team">The new team to assign.</returns>
+	void SetTeam(int team) override;
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Method:          SetIgnoresTeamHits
@@ -784,7 +783,7 @@ enum MOType
     /// Sets this MovableObject as having been added to MovableMan. Should only really be done in MovableMan::Add/Remove Actor/Item/Particle.
     /// </summary>
 	/// <param name="addedToMovableMan">Whether or not this MovableObject has been added to MovableMan.</param>
-	void SetAsAddedToMovableMan(bool addedToMovableMan = true) { if (addedToMovableMan) { m_HasEverBeenAddedToMovableMan = true; } m_ExistsInMovableMan = addedToMovableMan; }
+	void SetAsAddedToMovableMan(bool addedToMovableMan = true) { if (addedToMovableMan) { m_HasEverBeenAddedToMovableMan = true; } }
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -1055,7 +1054,7 @@ enum MOType
 //                  MovableObject and affect its path next Update(). In N or kg * m/s^2.
 //                  A Vector with the offset, in METERS, of where the force is being
 //                  applied relative to the center of this MovableObject.
-// Return value:    None.
+// Return value:    None.A
 
     void AddForce(const Vector &force, const Vector &offset = Vector())
         { m_Forces.push_back(std::make_pair(force, offset)); }
@@ -1244,19 +1243,6 @@ enum MOType
 //                  after this hit.
 
 	bool OnMOHit(HitData &hd);
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-// Virtual method:  OnMOHit
-//////////////////////////////////////////////////////////////////////////////////////////
-// Description:     Defines what should happen when this MovableObject hits another MO.
-//                  This is called by the owned Atom/AtomGroup of this MovableObject during
-//                  travel.
-// Arguments:       The other MO hit. Ownership is not transferred.
-// Return value:    Wheter the MovableObject should immediately halt any travel going on
-//                  after this hit.
-
-    virtual bool OnMOHit(MovableObject *pOtherMO);
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -1509,16 +1495,12 @@ enum MOType
 	void Update() override;
 
 
-//////////////////////////////////////////////////////////////////////////////////////////
-// Virtual method:  UpdateScript
-//////////////////////////////////////////////////////////////////////////////////////////
-// Description:     Updates this MovableObject's Lua scripts. Supposed to be done every
-//                  frame after the rest of the hardcoded C++ update is done.
-// Arguments:       None.
-// Return value:    An error return value signaling sucess or any particular failure.
-//                  Anything below 0 is an error signal.
-
-	int UpdateScripts();
+    /// <summary>
+	/// Updates this MovableObject's Lua scripts.
+	/// </summary>
+    /// <param name="scriptsToRun">Whether to run this objects single-threaded or multi-threaded scripts.</params>
+    /// <returns>An error return value signaling success or any particular failure. Anything below 0 is an error signal.</returns>
+	virtual int UpdateScripts(ThreadScriptsToRun scriptsToRun);
 
 	/// <summary>
 	/// Event listener to be run while this MovableObject's PieMenu is opened.
@@ -1919,7 +1901,6 @@ protected:
     int m_MOIDFootprint;
     // Whether or not this object has ever been added to MovableMan. Does not take into account the object being removed from MovableMan, though in practice it usually will, cause objects are usually only removed when they're deleted.
     bool m_HasEverBeenAddedToMovableMan;
-	bool m_ExistsInMovableMan; //<! Whether or not this object currently exists in MovableMan. Takes into account the object being removed from MovableMan.
     // A set of ID:s of MO:s that already have collided with this MO during this frame.
     std::set<MOID> m_AlreadyHitBy;
 	int m_VelOscillations; //!< A counter for oscillations in translational velocity, in order to detect settling.

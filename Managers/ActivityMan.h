@@ -49,18 +49,6 @@ namespace RTE {
 		Activity * GetActivity() const { return m_Activity.get(); }
 
 		/// <summary>
-		/// Gets whether or not the currently active Activity allows saving.
-		/// </summary>
-		/// <returns>Whether or not the currently active Activity allows saving.</returns>
-		bool GetActivityAllowsSaving() const { return m_Activity && m_ActivityAllowsSaving; }
-
-		/// <summary>
-		/// Sets whether or not the currently active Activity allows saving.
-		/// </summary>
-		/// <param name="activityAllowsSaving">Whether or not the currently active Activity should allow saving.</param>
-		void SetActivityAllowsSaving(bool activityAllowsSaving) { m_ActivityAllowsSaving = activityAllowsSaving; }
-
-		/// <summary>
 		/// Gets whether or not there is a game currently being saved.
 		/// </summary>
 		/// <returns>Whether or not there is a game currently being saved.</returns>
@@ -121,7 +109,14 @@ namespace RTE {
 		/// <summary>
 		/// Sets the game simulation to be started back up after the current Activity was unpaused.
 		/// </summary>
-		void SetResumeActivity() { m_ActivityNeedsResume = true; }
+		/// <param name="resumingFromPauseMenu">Whether the game simulation is being resumed from the pause menu.</param>
+		void SetResumeActivity(bool resumingFromPauseMenu = false) { m_ActivityNeedsResume = true; m_ResumingActivityFromPauseMenu = resumingFromPauseMenu; }
+
+		/// <summary>
+		/// Gets whether the pause menu should be skipped when the game simulation is paused.
+		/// </summary>
+		/// <returns>Whether the pause menu should be skipped when the game simulation is paused.</returns>
+		bool SkipPauseMenuWhenPausingActivity() const { return m_SkipPauseMenuWhenPausingActivity; }
 #pragma endregion
 
 #pragma region Default Activity Handling
@@ -169,6 +164,12 @@ namespace RTE {
 #pragma endregion
 
 #pragma region Saving and Loading
+		/// <summary>
+		/// A utility function we can call in the debugger quickwatch window to force an abort save to occur (great for force-saving the game when it crashes)
+		/// </summary>
+		/// <returns>Whether the game was successfully saved.</returns>
+		bool ForceAbortSave();
+
 		/// <summary>
 		/// Saves the currently running Scene and Activity to a savegame file. Note this only works for GAScripted activities.
 		/// </summary>
@@ -249,7 +250,8 @@ namespace RTE {
 		/// Pauses/unpauses the game and saving/resuming in-game music if possible, or queuing default music if not.
 		/// </summary>
 		/// <param name="pause">Whether to pause the game or not.</param>
-		void PauseActivity(bool pause = true);
+		/// <param name="skipPauseMenu">Whether the pause menu should be skipped when the game simulation is paused.</param>
+		void PauseActivity(bool pause = true, bool skipPauseMenu = false);
 
 		/// <summary>
 		/// Start the game simulation back up after the current Activity was unpaused.
@@ -286,13 +288,14 @@ namespace RTE {
 		std::unique_ptr<Activity> m_Activity; //!< The currently active Activity.
 		std::unique_ptr<Activity> m_StartActivity; //!< The starting condition of the next Activity to be (re)started.
 
-		bool m_ActivityAllowsSaving; //!< Whether or not the current Activity allows saving and loading. The details on whether or not an Activity allows this are set up when the Activity is started.
 		std::atomic<int> m_ActiveSavingThreadCount; //!< The number of threads currently saving.
 		bool m_IsLoading; //! Whether or not a game is loading.
 
 		bool m_InActivity; //!< Whether we are currently in game (as in, not in the main menu or any other out-of-game menus), regardless of its state.
 		bool m_ActivityNeedsRestart; //!< Whether the current Activity needs to be restarted.
 		bool m_ActivityNeedsResume; //!< Whether the game simulation needs to be started back up after the current Activity was unpaused.
+		bool m_ResumingActivityFromPauseMenu; //!< Whether the game simulation is being resumed from the pause menu.
+		bool m_SkipPauseMenuWhenPausingActivity; //!< Whether the pause menu should be skipped when the game simulation is paused.
 
 		std::string m_LastMusicPath; //!< Path to the last music stream being played.
 		float m_LastMusicPos; //!< What the last position of the in-game music track was before pause, in seconds.

@@ -83,6 +83,8 @@ void MOSRotating::Clear()
     m_LoudnessOnGib = 1;
 	m_DamageMultiplier = 0;
     m_NoSetDamageMultiplier = true;
+	m_FlashWhiteTimer.Reset();
+	m_FlashWhiteTimer.SetRealTimeLimitMS(0);
     m_StringValueMap.clear();
     m_NumberValueMap.clear();
     m_ObjectValueMap.clear();
@@ -1730,6 +1732,8 @@ void MOSRotating::SetWhichMOToNotHit(MovableObject *moToNotHit, float forHowLong
 void MOSRotating::Draw(BITMAP *targetBitmap, const Vector &targetPos, DrawMode mode, bool onlyPhysical) const {
     RTEAssert(!m_aSprite.empty(), "No sprite bitmaps loaded to draw!");
     RTEAssert(m_Frame >= 0 && m_Frame < m_FrameCount, "Frame is out of bounds!");
+
+	if (mode == g_DrawColor && !m_FlashWhiteTimer.IsPastRealTimeLimit()) { mode = g_DrawWhite; }
 
     // Draw all the attached wound emitters, and only if the mode is g_DrawColor and not onlyphysical
     // Only draw attachables and emitters which are not drawn after parent, so we draw them before

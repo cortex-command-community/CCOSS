@@ -69,6 +69,12 @@ namespace RTE {
 		/// </summary>
 		/// <param name="filePath">The path to the file to load and run.</param>
 		void SetLuaPath(const std::string &filePath);
+
+		/// <summary>
+		/// Gets this LuaStateWrapper's internal lua state.
+		/// </summary>
+		/// <returns>This LuaStateWrapper's internal lua state.</returns>
+		lua_State* GetLuaState() { return m_State; };
 #pragma endregion
 
 #pragma region Script Execution Handling
@@ -217,6 +223,18 @@ namespace RTE {
 		/// <returns>A random number between 0 and 1.</returns>
 		double PosRand();
 
+#pragma region Passthrough LuaMan Functions
+		const std::vector<std::string>& DirectoryList(const std::string& relativeDirectory);
+		const std::vector<std::string>& FileList(const std::string& relativeDirectory);
+		bool FileExists(const std::string &fileName);
+		int FileOpen(const std::string& fileName, const std::string& accessMode);
+		void FileClose(int fileIndex);
+		void FileCloseAll();
+		std::string FileReadLine(int fileIndex);
+		void FileWriteLine(int fileIndex, const std::string& line);
+		bool FileEOF(int fileIndex);
+#pragma endregion
+
 		/// <summary>
 		/// Generates a string that describes the current state of the Lua stack, for debugging purposes.
 		/// </summary>
@@ -292,7 +310,7 @@ namespace RTE {
 		/// <summary>
 		/// Gets the current thread lua state override that new objects created will be assigned to.
 		/// </summary>
-		/// <param name="luaState">The current lua state to force objects to be assigned to.</returns>
+		/// <returns>The current lua state to force objects to be assigned to.</returns>
 		LuaStateWrapper * GetThreadLuaStateOverride() const;
 
 		/// <summary>
@@ -301,6 +319,12 @@ namespace RTE {
 		/// </summary>
 		/// <param name="luaState">The lua state to force objects to be assigned to.</returns>
 		void SetThreadLuaStateOverride(LuaStateWrapper* luaState);
+
+		/// <summary>
+		/// Gets the current thread lua state that is running.
+		/// </summary>
+		/// <returns>The current lua state that is running.</returns>
+		LuaStateWrapper* GetThreadCurrentLuaState() const;
 
 		/// <summary>
 		/// Returns a free threaded script states to assign a movableobject to.
@@ -348,6 +372,13 @@ namespace RTE {
 		/// <param name="relativeDirectory">Directory path relative to the working directory.</param>
 		/// <returns>A vector of the files in relativeDirectory.</returns>
 		const std::vector<std::string> & FileList(const std::string &relativeDirectory);
+
+		/// <summary>
+		/// Returns whether or not the specified file exists. You can only check for files inside .rte folders in the working directory.
+		/// </summary>
+		/// <param name="fileName">Path to the file. All paths are made absolute by adding current working directory to the specified path.</param>
+		/// <returns>Whether or not the specified file exists.</returns>
+		bool FileExists(const std::string &fileName);
 
 		/// <summary>
 		/// Opens a file or creates one if it does not exist, depending on access mode. You can open files only inside .rte folders in the working directly. You can't open more that c_MaxOpenFiles file simultaneously.

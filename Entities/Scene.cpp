@@ -671,7 +671,7 @@ int Scene::LoadData(bool placeObjects, bool initPathfinding, bool placeUnits)
             {
                 // PASSING OWNERSHIP INTO the Add* ones - we are clearing out this list!
 				if (Actor *actor = dynamic_cast<Actor *>(pMO)) {
-                    bool shouldPlace = placeUnits || dynamic_cast<ADoor *>(actor);
+                    bool shouldPlace = placeUnits || actor->IsInGroup("Bunker Systems");
 
                     // Because we don't save/load all data yet and do a bit of a hack with scene loading, we can potentially save a dead actor that still technically exists.
                     // If we find one of these, just skip them!
@@ -1028,7 +1028,7 @@ int Scene::ExpandAIPlanAssemblySchemes()
 //////////////////////////////////////////////////////////////////////////////////////////
 // Description:     Saves currently loaded bitmap data in memory to disk.
 
-int Scene::SaveData(std::string pathBase)
+int Scene::SaveData(std::string pathBase, bool doAsyncSaves)
 {
     const std::string fullPathBase = g_PresetMan.GetFullModulePath(pathBase);
     if (fullPathBase.empty())
@@ -1038,7 +1038,7 @@ int Scene::SaveData(std::string pathBase)
         return 0;
 
     // Save Terrain's data
-    if (m_pTerrain->SaveData(fullPathBase) < 0)
+    if (m_pTerrain->SaveData(fullPathBase, doAsyncSaves) < 0)
     {
         RTEAbort("Saving Terrain " + m_pTerrain->GetPresetName() + "\'s data failed!");
         return -1;
@@ -1054,7 +1054,7 @@ int Scene::SaveData(std::string pathBase)
         {
             std::snprintf(str, sizeof(str), "T%d", team);
             // Save unseen layer data to disk
-            if (m_apUnseenLayer[team]->SaveData(fullPathBase + " US" + str + ".png") < 0)
+            if (m_apUnseenLayer[team]->SaveData(fullPathBase + " US" + str + ".png", doAsyncSaves) < 0)
             {
                 g_ConsoleMan.PrintString("ERROR: Saving unseen layer " + m_apUnseenLayer[team]->GetPresetName() + "\'s data failed!");
                 return -1;
@@ -2981,6 +2981,13 @@ void Scene::ResetPathFinding() {
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////
+
+void Scene::BlockUntilAllPathingRequestsComplete() {
+	for (int team = Activity::Teams::NoTeam; team < Activity::Teams::MaxTeamCount; ++team) {
+		while (GetPathFinder(static_cast<Activity::Teams>(team))->GetCurrentPathingRequests() != 0) {};
+	}
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Method:          UpdatePathFinding
@@ -2992,6 +2999,15 @@ void Scene::UpdatePathFinding()
 {
     constexpr int nodeUpdatesPerCall = 100;
     constexpr int maxUnupdatedMaterialAreas = 1000;
+
+    // If any pathing requests are active, don't update things yet, wait till they're finished
+	// TODO: this can indefinitely block updates if pathing requests are made every frame. Figure out a solution for this
+	// Either force-complete pathing requests occasionally, or delay starting new pathing requests if we've not updated in a while
+    for (int team = Activity::Teams::NoTeam; team < Activity::Teams::MaxTeamCount; ++team) {
+		if (GetPathFinder(static_cast<Activity::Teams>(team))->GetCurrentPathingRequests() != 0) {
+            return;
+        };
+	}
 
     int nodesToUpdate = nodeUpdatesPerCall / g_ActivityMan.GetActivity()->GetTeamCount();
     if (m_pTerrain->GetUpdatedMaterialAreas().size() > maxUnupdatedMaterialAreas) {
