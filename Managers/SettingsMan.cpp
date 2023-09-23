@@ -51,7 +51,6 @@ namespace RTE {
 		m_DisableFactionBuyMenuThemes = false;
 		m_DisableFactionBuyMenuThemeCursors = false;
 		m_PathFinderGridNodeSize = c_PPM;
-		m_EnableMultithreadedAI = false;
 		m_AIUpdateInterval = 2;
 
 		m_SkipIntro = false;

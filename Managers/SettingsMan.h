@@ -548,7 +548,6 @@ namespace RTE {
 		bool m_DisableFactionBuyMenuThemes; //!< Whether faction BuyMenu theme support is disabled.
 		bool m_DisableFactionBuyMenuThemeCursors; //!< Whether custom cursor support in faction BuyMenu themes is disabled.
 		int m_PathFinderGridNodeSize; //!< The grid size used by the PathFinder, in pixels.
-		int m_EnableMultithreadedAI; //!< EXPERIMENTAL! Whether or not to enable multithreaded AI.
 		int m_AIUpdateInterval; //!< How often actor's AI should be updated, i.e. every n simulation updates.
 
 		bool m_SkipIntro; //!< Whether to play the intro of the game or skip directly to the main menu.
