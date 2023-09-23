@@ -22,7 +22,7 @@ sources += files(
 'WindowMan.cpp',
 'ThreadMan.cpp'
 )
-luaman_cpp_args = []
+luaman_cpp_args = preprocessor_flags
 defaults_override = []
 if compiler.get_argument_syntax() == 'gcc'
   luaman_cpp_args += ['-fpermissive']

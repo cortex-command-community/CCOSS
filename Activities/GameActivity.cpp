@@ -1206,7 +1206,6 @@ void GameActivity::UpdateEditing()
         if (!(m_IsActive[player] && m_IsHuman[player]))
             continue;
 
-        // Update the player controllers which control the switching and editor gui
         m_pEditorGUI[player]->Update();
 
         // Set the team associations with each screen displayed
