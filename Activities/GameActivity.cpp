@@ -23,6 +23,7 @@
 #include "MetaMan.h"
 #include "ConsoleMan.h"
 #include "PresetMan.h"
+#include "SceneMan.h"
 #include "DataModule.h"
 #include "PostProcessMan.h"
 #include "Controller.h"
@@ -33,6 +34,7 @@
 #include "ACRocket.h"
 #include "HeldDevice.h"
 #include "Loadout.h"
+#include "SLTerrain.h"
 
 #include "GUI.h"
 #include "GUIFont.h"
@@ -85,7 +87,7 @@ void GameActivity::Clear()
 
 	m_StartingGold = 0;
 	m_FogOfWarEnabled = false;
-	m_RequireClearPathToOrbit = true;
+	m_RequireClearPathToOrbit = false;
 
 	m_DefaultFogOfWar = -1;
 	m_DefaultRequireClearPathToOrbit = -1;
@@ -335,8 +337,9 @@ void GameActivity::Destroy(bool notInherited)
 
     for (int team = Teams::TeamOne; team < Teams::MaxTeamCount; ++team)
     {
-        for (std::deque<Delivery>::iterator itr = m_Deliveries[team].begin(); itr != m_Deliveries[team].end(); ++itr)
+        for (std::deque<Delivery>::iterator itr = m_Deliveries[team].begin(); itr != m_Deliveries[team].end(); ++itr) {
             delete itr->pCraft;
+        }
         m_Deliveries[team].clear();
     }
 
@@ -801,8 +804,13 @@ bool GameActivity::CreateDelivery(int player, int mode, Vector &waypoint, Actor 
                 pDeliveryCraft->AddInventoryItem(*iItr);
         }
 
+        float spawnY = 0.0f;
+        if (g_SceneMan.GetTerrain() && g_SceneMan.GetTerrain()->GetOrbitDirection() == Directions::Down) {
+            spawnY = g_SceneMan.GetSceneHeight();
+        }
+
         // Delivery craft appear straight over the selected LZ
-        pDeliveryCraft->SetPos(Vector(m_LandingZone[player].m_X, 0));
+        pDeliveryCraft->SetPos(Vector(m_LandingZone[player].m_X, spawnY));
 //        pDeliveryCraft->SetPos(Vector(m_LandingZone[player].m_X, 300));
 
         pDeliveryCraft->SetTeam(team);
@@ -904,8 +912,10 @@ int GameActivity::Start()
         m_Deliveries[team].clear();
 
         // Clear delivery queues
-        for (std::deque<Delivery>::iterator itr = m_Deliveries[team].begin(); itr != m_Deliveries[team].end(); ++itr)
+        for (std::deque<Delivery>::iterator itr = m_Deliveries[team].begin(); itr != m_Deliveries[team].end(); ++itr) {
             delete itr->pCraft;
+        }
+
         m_Deliveries[team].clear();
 /* This is taken care of by the individual Activity logic
         // See if there are specified landing zone areas defined in the scene
@@ -1137,8 +1147,12 @@ void GameActivity::End()
     {
         if (!m_TeamActive[team])
             continue;
-        for (std::deque<Delivery>::iterator itr = m_Deliveries[team].begin(); itr != m_Deliveries[team].end(); ++itr)
+        for (std::deque<Delivery>::iterator itr = m_Deliveries[team].begin(); itr != m_Deliveries[team].end(); ++itr) {
+            if (MovableObject* asMo = dynamic_cast<MovableObject*>(itr->pCraft)) {
+                asMo->DestroyScriptState();
+            }
             delete itr->pCraft;
+        }
         m_Deliveries[team].clear();
     }
 
@@ -1802,7 +1816,7 @@ void GameActivity::Update()
 				float lzOffsetY = 0;
 				// Holding up or down will allow the player to make multiple orders without exiting the delivery phase. TODO: this should probably have a cooldown?
 				if (!m_PlayerController[player].IsState(MOVE_UP) && !m_PlayerController[player].IsState(MOVE_DOWN)) {
-					m_LandingZone[player].m_Y = g_SceneMan.FindAltitude(m_LandingZone[player], g_SceneMan.GetSceneHeight(), 10);
+					m_LandingZone[player].m_Y = g_SceneMan.FindAltitude(m_LandingZone[player], g_SceneMan.GetSceneHeight(), 10, true);
 					if (!g_MovableMan.GetNextTeamActor(team)) {
 						m_ObservationTarget[player] = m_LandingZone[player];
 						m_ViewState[player] = ViewState::Observe;
@@ -1818,7 +1832,11 @@ void GameActivity::Update()
 				} else {
 					// Place the new marker above the cursor so that they don't intersect with each other.
 					lzOffsetY += m_AIReturnCraft[player] ? -32.0F : 32.0F;
-					m_LandingZone[player].m_Y = g_SceneMan.FindAltitude(m_LandingZone[player], g_SceneMan.GetSceneHeight(), 10) + lzOffsetY;
+                    if (g_SceneMan.GetTerrain()->GetOrbitDirection() == Directions::Down) {
+                        lzOffsetY *= -1.0f;
+                    }
+
+					m_LandingZone[player].m_Y = g_SceneMan.FindAltitude(m_LandingZone[player], g_SceneMan.GetSceneHeight(), 10, true) + lzOffsetY;
 
 					if (m_pBuyGUI[player]->GetTotalOrderCost() > GetTeamFunds(team)) {
 						g_GUISound.UserErrorSound()->Play(player);
@@ -1842,11 +1860,18 @@ void GameActivity::Update()
 
             // Interpolate the LZ altitude to the height of the highest terrain point at the player-chosen X
             float prevHeight = m_LandingZone[player].m_Y;
-            m_LandingZone[player].m_Y = 0;
-            m_LandingZone[player].m_Y = prevHeight + ((g_SceneMan.FindAltitude(m_LandingZone[player], g_SceneMan.GetSceneHeight(), 10) - prevHeight) * 0.2);
+            
+            float viewOffset = g_FrameMan.GetPlayerScreenHeight() / 4;
+            m_LandingZone[player].m_Y = 0.0f;
+            if (g_SceneMan.GetTerrain() && g_SceneMan.GetTerrain()->GetOrbitDirection() == Directions::Down) {
+                m_LandingZone[player].m_Y = g_SceneMan.GetSceneHeight();
+                viewOffset *= -1;
+            }
+
+            m_LandingZone[player].m_Y = prevHeight + ((g_SceneMan.FindAltitude(m_LandingZone[player], g_SceneMan.GetSceneHeight(), 10, true) - prevHeight) * 0.2);
 
             // Set the view to a little above the LZ position
-            Vector viewTarget(m_LandingZone[player].m_X, m_LandingZone[player].m_Y - (g_FrameMan.GetPlayerScreenHeight() / 4));
+            Vector viewTarget(m_LandingZone[player].m_X, m_LandingZone[player].m_Y - viewOffset);
             g_CameraMan.SetScrollTarget(viewTarget, 0.1, ScreenOfPlayer(player));
         }
 
@@ -1970,8 +1995,14 @@ void GameActivity::Update()
 //            SwitchToPrevActor(player, team, m_Brain[player]);
             // Start selecting the landing zone
             m_ViewState[player] = ViewState::LandingZoneSelect;
+
             // Set this to zero so the cursor interpolates down from the sky
-            m_LandingZone[player].m_Y = 0;
+            float landingSpot = 0.0f;
+            if (g_SceneMan.GetTerrain() && g_SceneMan.GetTerrain()->GetOrbitDirection() == Directions::Down) {
+                landingSpot = g_SceneMan.GetSceneHeight();
+            }
+
+            m_LandingZone[player].m_Y = landingSpot;
         }
 
         // After a while of game over, change messages to the final one for everyone
@@ -2122,7 +2153,7 @@ void GameActivity::Update()
             // Make view follow the terrain
             float prevHeight = m_ObservationTarget[Players::PlayerFour].m_Y;
             m_ObservationTarget[Players::PlayerFour].m_Y = 0;
-            m_ObservationTarget[Players::PlayerFour].m_Y = prevHeight + ((g_SceneMan.FindAltitude(m_ObservationTarget[Players::PlayerFour], g_SceneMan.GetSceneHeight(), 20) - prevHeight) * 0.02);
+            m_ObservationTarget[Players::PlayerFour].m_Y = prevHeight + ((g_SceneMan.FindAltitude(m_ObservationTarget[Players::PlayerFour], g_SceneMan.GetSceneHeight(), 20, true) - prevHeight) * 0.02);
         }
 
         // Set the view to the observation position

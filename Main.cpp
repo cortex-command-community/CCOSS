@@ -44,6 +44,9 @@
 #include "WindowMan.h"
 #include "NetworkServer.h"
 #include "NetworkClient.h"
+#include "CameraMan.h"
+#include "ActivityMan.h"
+#include "PrimitiveMan.h"
 
 extern "C" { FILE __iob_func[3] = { *stdin,*stdout,*stderr }; }
 
@@ -57,14 +60,38 @@ namespace RTE {
 	/// Initializes all the essential managers.
 	/// </summary>
 	void InitializeManagers() {
+		TimerMan::Construct();
+		PresetMan::Construct();
+		SettingsMan::Construct();
+		WindowMan::Construct();
+		LuaMan::Construct();
+		NetworkServer::Construct();
+		NetworkClient::Construct();
+		FrameMan::Construct();
+		PerformanceMan::Construct();
+		PostProcessMan::Construct();
+		PrimitiveMan::Construct();
+		AudioMan::Construct();
+		GUISound::Construct();
+		UInputMan::Construct();
+		ConsoleMan::Construct();
+		SceneMan::Construct();
+		MovableMan::Construct();
+		MetaMan::Construct();
+		MenuMan::Construct();
+		CameraMan::Construct();
+		ActivityMan::Construct();
+		LoadingScreen::Construct();
+		ThreadMan::Construct();
+
 		g_SettingsMan.Initialize();
+		g_WindowMan.Initialize();
 
 		g_ThreadMan.Initialize();
 		g_LuaMan.Initialize();
 		g_NetworkServer.Initialize();
 		g_NetworkClient.Initialize();
 		g_TimerMan.Initialize();
-		g_WindowMan.Initialize();
 		g_FrameMan.Initialize();
 		g_PostProcessMan.Initialize();
 		g_PerformanceMan.Initialize();
@@ -106,6 +133,7 @@ namespace RTE {
 		g_LuaMan.Destroy();
 		ContentFile::FreeAllLoaded();
 		g_ConsoleMan.Destroy();
+		g_WindowMan.Destroy();
 		g_ThreadMan.Destroy();
 
 #ifdef DEBUG_BUILD
@@ -229,6 +257,7 @@ namespace RTE {
 		// Moving things over to a more formal render/sim split will be an ongoing task that we'll do over time.
 
 		while (!System::IsSetToQuit()) {
+			g_WindowMan.ClearRenderer();
 			PollSDLEvents();
 
 			g_WindowMan.Update();
@@ -312,7 +341,11 @@ namespace RTE {
 				g_FrameMan.Update();
 				g_LuaMan.Update();
 				g_ActivityMan.Update();
+
+				g_LuaMan.ClearScriptTimings();
 				g_MovableMan.Update();
+				g_PerformanceMan.UpdateSortedScriptTimings(g_LuaMan.GetScriptTimings());
+
 				g_AudioMan.Update();
 
 				g_ActivityMan.LateUpdateGlobalScripts();
@@ -382,12 +415,15 @@ namespace RTE {
 			PollSDLEvents();
 
 			g_WindowMan.Update();
+			g_WindowMan.ClearRenderer();
+
 			g_UInputMan.Update();
 			g_ConsoleMan.Update();
 			g_ThreadMan.Update();
 
 			long long drawStartTime = g_TimerMan.GetAbsoluteTime();
 			g_FrameMan.Draw();
+			g_WindowMan.DrawPostProcessBuffer();
 			long long drawEndTime = g_TimerMan.GetAbsoluteTime();
 			g_PerformanceMan.UpdateMSPD(drawEndTime - drawStartTime);
 
