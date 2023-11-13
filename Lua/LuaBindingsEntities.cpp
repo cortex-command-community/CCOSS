@@ -275,6 +275,7 @@ namespace RTE {
 		.def("AddInventoryItem", &Actor::AddInventoryItem, luabind::adopt(_2))
 		.def("RemoveInventoryItem", (void (Actor::*)(const std::string &))&Actor::RemoveInventoryItem)
 		.def("RemoveInventoryItem", (void (Actor::*)(const std::string &, const std::string &))&Actor::RemoveInventoryItem)
+		.def("RemoveInventoryItemAtIndex", &Actor::RemoveInventoryItemAtIndex, luabind::adopt(luabind::return_value))
 		.def("SwapNextInventory", &Actor::SwapNextInventory)
 		.def("SwapPrevInventory", &Actor::SwapPrevInventory)
 		.def("DropAllInventory", &Actor::DropAllInventory)
@@ -1083,7 +1084,8 @@ namespace RTE {
 		.def("MoveOutOfTerrain", &MovableObject::MoveOutOfTerrain)
 		.def("RotateOffset", &MovableObject::RotateOffset)
 		.def("SendMessage", &LuaAdaptersMovableObject::SendMessage1)
-		.def("SendMessage", &LuaAdaptersMovableObject::SendMessage2);
+		.def("SendMessage", &LuaAdaptersMovableObject::SendMessage2)
+		.def("RequestSyncedUpdate", &MovableObject::RequestSyncedUpdate);
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1205,9 +1207,9 @@ namespace RTE {
 		.def("GetFirstPieSliceByType", &PieMenu::GetFirstPieSliceByType)
 		.def("AddPieSlice", &PieMenu::AddPieSlice, luabind::adopt(_2))
 		.def("AddPieSlice", &LuaAdaptersPieMenu::AddPieSlice, luabind::adopt(_2))
-		.def("AddPieSliceIfPresetNameIsUnique", &PieMenu::AddPieSliceIfPresetNameIsUnique, luabind::adopt(_2))
-		.def("AddPieSliceIfPresetNameIsUnique", &LuaAdaptersPieMenu::AddPieSliceIfPresetNameIsUnique1, luabind::adopt(_2))
-		.def("AddPieSliceIfPresetNameIsUnique", &LuaAdaptersPieMenu::AddPieSliceIfPresetNameIsUnique2, luabind::adopt(_2))
+		.def("AddPieSliceIfPresetNameIsUnique", &PieMenu::AddPieSliceIfPresetNameIsUnique)
+		.def("AddPieSliceIfPresetNameIsUnique", &LuaAdaptersPieMenu::AddPieSliceIfPresetNameIsUnique1)
+		.def("AddPieSliceIfPresetNameIsUnique", &LuaAdaptersPieMenu::AddPieSliceIfPresetNameIsUnique2)
 		.def("RemovePieSlice", &PieMenu::RemovePieSlice, luabind::adopt(luabind::return_value))
 		.def("RemovePieSlicesByPresetName", &PieMenu::RemovePieSlicesByPresetName)
 		.def("RemovePieSlicesByType", &PieMenu::RemovePieSlicesByType)
@@ -1269,6 +1271,8 @@ namespace RTE {
 		.def("GetArea", (Scene::Area * (Scene:: *)(const std::string &areaName)) &Scene::GetArea)
 		.def("GetOptionalArea", &Scene::GetOptionalArea)
 		.def("WithinArea", &Scene::WithinArea)
+		.def("AddNavigatableArea", &Scene::AddNavigatableArea)
+		.def("ClearNavigatableAreas", &Scene::ClearNavigatableAreas)
 		.def("ResetPathFinding", &Scene::ResetPathFinding)
 		.def("UpdatePathFinding", &Scene::UpdatePathFinding)
 		.def("PathFindingUpdated", &Scene::PathFindingUpdated)
