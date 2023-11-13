@@ -2656,7 +2656,7 @@ bool SceneMan::AddSceneObject(SceneObject *sceneObject) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void SceneMan::Update(int screenId) {
-    SLTerrain *terrain = g_ThreadMan.GetDrawableGameState().m_Terrain.get();
+    SLTerrain *terrain = g_ThreadMan.GetDrawableGameState().m_Terrain;
     if (!terrain) {
 		return;
 	}
@@ -2698,7 +2698,7 @@ void SceneMan::Update(int screenId) {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void SceneMan::Draw(BITMAP *targetBitmap, BITMAP *targetGUIBitmap, const Vector &targetPos, bool skipBackgroundLayers, bool skipTerrain) {
-	SLTerrain *terrain = g_ThreadMan.GetDrawableGameState().m_Terrain.get();
+	SLTerrain *terrain = g_ThreadMan.GetDrawableGameState().m_Terrain;
     if (!terrain) {
         return;
     }
