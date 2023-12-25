@@ -2673,8 +2673,6 @@ void SceneMan::Update(int screenId) {
 
 	m_LastUpdatedScreen = screenId;
 
-    g_CameraMan.Update(screenId);
-
     const Vector &offset = g_CameraMan.GetOffset(screenId);
 
 	if (m_pDebugLayer) {
