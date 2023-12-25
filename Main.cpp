@@ -86,13 +86,11 @@ namespace RTE {
 		CameraMan::Construct();
 		ActivityMan::Construct();
 		LoadingScreen::Construct();
-		ThreadMan::Construct();
 
 		g_ThreadMan.Initialize();
 		g_SettingsMan.Initialize();
 		g_WindowMan.Initialize();
 
-		g_ThreadMan.Initialize();
 		g_LuaMan.Initialize();
 		g_NetworkServer.Initialize();
 		g_NetworkClient.Initialize();
