@@ -132,17 +132,12 @@ namespace RTE {
 			m_SimAccumulator += static_cast<long long>(static_cast<float>(timeIncrease) * m_TimeScale);
 		}
 
-		float maxPossibleSimSpeed = GetDeltaTimeMS() / std::max(g_PerformanceMan.GetMSPSUAverage(), std::numeric_limits<float>::epsilon());
+		float maxPossibleSimSpeed = GetDeltaTimeMS() / std::max(g_PerformanceMan.GetMSPUAverage(), std::numeric_limits<float>::epsilon());
 
 		// Make sure we don't get runaway behind schedule
 		m_SimAccumulator = std::min(m_SimAccumulator.load(), m_DeltaTime + static_cast<long long>(m_DeltaTime * maxPossibleSimSpeed));
 
 		RTEAssert(m_SimAccumulator >= 0, "Negative sim time accumulator?!");
-
-		// Reset the counter since the last drawn update. Set it negative since we're counting full pure sim updates and this will be incremented to 0 on next SimUpdate.
-		if (m_DrawnSimUpdate) {
-			m_SimUpdatesSinceDrawn = -1; 
-		}
 
 		m_SimSpeed = std::min(maxPossibleSimSpeed, GetTimeScale());
 	}
