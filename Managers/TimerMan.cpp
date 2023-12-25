@@ -112,7 +112,6 @@ namespace RTE {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#pragma optimize("", off)
 	void TimerMan::Update() {
 		long long prevTime = m_RealTimeTicks;
 		m_RealTimeTicks = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - m_StartTime).count();
@@ -136,5 +135,4 @@ namespace RTE {
 
 		RTEAssert(m_SimAccumulator >= 0, "Negative sim time accumulator?!");
 	}
-#pragma optimize("", on)
 }
