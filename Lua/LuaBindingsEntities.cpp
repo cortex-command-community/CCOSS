@@ -371,6 +371,7 @@ namespace RTE {
 		.def("OpenDoor", &ADoor::OpenDoor)
 		.def("CloseDoor", &ADoor::CloseDoor)
 		.def("StopDoor", &ADoor::StopDoor)
+		.def("ResetSensorTimer", &ADoor::ResetSensorTimer)
 		.def("SetClosedByDefault", &ADoor::SetClosedByDefault)
 
 		.enum_("DoorState")[
@@ -1038,9 +1039,11 @@ namespace RTE {
 		.def("DisableScript", &LuaAdaptersMovableObject::DisableScript)
 		.def("EnableOrDisableAllScripts", &MovableObject::EnableOrDisableAllScripts)
 		.def("GetStringValue", &MovableObject::GetStringValue)
+		.def("GetEncodedStringValue", &MovableObject::GetEncodedStringValue)
 		.def("GetNumberValue", &MovableObject::GetNumberValue)
 		.def("GetObjectValue", &MovableObject::GetObjectValue)
 		.def("SetStringValue", &MovableObject::SetStringValue)
+		.def("SetEncodedStringValue", &MovableObject::SetEncodedStringValue)
 		.def("SetNumberValue", &MovableObject::SetNumberValue)
 		.def("SetObjectValue", &MovableObject::SetObjectValue)
 		.def("RemoveStringValue", &MovableObject::RemoveStringValue)
@@ -1334,16 +1337,25 @@ namespace RTE {
 		.property("RotAngle", &SceneObject::GetRotAngle, &SceneObject::SetRotAngle)
 		.property("Team", &SceneObject::GetTeam, &SceneObject::SetTeam)
 		.property("PlacedByPlayer", &SceneObject::GetPlacedByPlayer, &SceneObject::SetPlacedByPlayer)
-		.property("IsBuyable", &SceneObject::IsBuyable)
-
+		.property("Buyable", &SceneObject::IsBuyable)
+		
+		.property("BuyableMode", &LuaAdaptersSceneObject::GetBuyableMode)
+		
 		.def("IsOnScenePoint", &SceneObject::IsOnScenePoint)
 		.def("GetGoldValue", &SceneObject::GetGoldValueOld)
 		.def("GetGoldValue", &SceneObject::GetGoldValue)
 		.def("SetGoldValue", &SceneObject::SetGoldValue)
 		.def("GetGoldValueString", &SceneObject::GetGoldValueString)
+		
 		.def("GetTotalValue", &SceneObject::GetTotalValue)
-
-		.def("GetTotalValue", &LuaAdaptersSceneObject::GetTotalValue);
+		.def("GetTotalValue", &LuaAdaptersSceneObject::GetTotalValue)
+		
+		.enum_("BuyableMode")[
+			luabind::value("NORESTRICTIONS", static_cast<int>(SceneObject::BuyableMode::NoRestrictions)),
+			luabind::value("BUYMENUONLY", static_cast<int>(SceneObject::BuyableMode::BuyMenuOnly)),
+			luabind::value("OBJECTPICKERONLY", static_cast<int>(SceneObject::BuyableMode::ObjectPickerOnly)),
+			luabind::value("SCRIPTONLY", static_cast<int>(SceneObject::BuyableMode::ScriptOnly))];
+		
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1376,6 +1388,7 @@ namespace RTE {
 		.property("BusRouting", &SoundContainer::GetBusRouting, &SoundContainer::SetBusRouting)
 		.property("Immobile", &SoundContainer::IsImmobile, &SoundContainer::SetImmobile)
 		.property("AttenuationStartDistance", &SoundContainer::GetAttenuationStartDistance, &SoundContainer::SetAttenuationStartDistance)
+		.property("CustomPanValue", &SoundContainer::GetCustomPanValue, &SoundContainer::SetCustomPanValue)
 		.property("PanningStrengthMultiplier", &SoundContainer::GetPanningStrengthMultiplier, &SoundContainer::SetPanningStrengthMultiplier)
 		.property("Loops", &SoundContainer::GetLoopSetting, &SoundContainer::SetLoopSetting)
 		.property("Priority", &SoundContainer::GetPriority, &SoundContainer::SetPriority)

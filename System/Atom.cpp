@@ -10,6 +10,8 @@
 #include "Actor.h"
 #include "ThreadMan.h"
 
+#include "tracy/Tracy.hpp"
+
 namespace RTE {
 
 	const std::string Atom::c_ClassName = "Atom";
@@ -605,6 +607,8 @@ namespace RTE {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	int Atom::Travel(float travelTime, bool autoTravel, bool scenePreLocked) {
+		ZoneScoped;
+
 		if (!m_OwnerMO) {
 			RTEAbort("Traveling an Atom without a parent MO!");
 			return travelTime;

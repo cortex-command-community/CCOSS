@@ -37,6 +37,8 @@
 #include "GUI.h"
 #include "AllegroBitmap.h"
 
+#include "tracy/Tracy.hpp"
+
 namespace RTE {
 
 ConcreteClassInfo(Actor, MOSRotating, 20);
@@ -1238,16 +1240,6 @@ float Actor::EstimateDigStrength() const {
     return m_AIBaseDigStrength;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void Actor::UpdateAIScripted(ThreadScriptsToRun scriptsToRun) {
-    RunScriptedFunctionInAppropriateScripts("UpdateAI", false, true, {}, {}, {}, scriptsToRun);
-    if (scriptsToRun == ThreadScriptsToRun::SingleThreaded) {
-        // If we're in a SingleThreaded context, we run the MultiThreaded scripts synced updates
-         RunScriptedFunctionInAppropriateScripts("SyncedUpdateAI", false, true, {}, {}, {}, ThreadScriptsToRun::Both);
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////
 // Method:          VerifyMOIDs
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -1299,6 +1291,8 @@ void Actor::PreControllerUpdate() {
 
 void Actor::Update()
 {
+    ZoneScoped;
+
     /////////////////////////////////
     // Hit Body update and handling
     MOSRotating::Update();

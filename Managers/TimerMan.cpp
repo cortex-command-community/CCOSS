@@ -112,15 +112,13 @@ namespace RTE {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#pragma optimize("", off)
 	void TimerMan::Update() {
 		long long prevTime = m_RealTimeTicks;
 		m_RealTimeTicks = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - m_StartTime).count();
-		long long timeIncrease = m_RealTimeTicks - prevTime;
 
-		// Cap it if too long (as when the app went out of focus).
-		if (timeIncrease > m_RealToSimCap) { 
-			timeIncrease = m_RealToSimCap; 
-		}
+		// Cap timeIncrease if too long (as when the app went out of focus), to m_RealToSimCap.
+		long long timeIncrease = std::min(m_RealTimeTicks - prevTime, m_RealToSimCap);
 
 		RTEAssert(timeIncrease > 0, "It seems your CPU is giving bad timing data to the game, this is known to happen on some multi-core processors. This may be fixed by downloading the latest CPU drivers from AMD or Intel.");
 
@@ -138,4 +136,5 @@ namespace RTE {
 
 		RTEAssert(m_SimAccumulator >= 0, "Negative sim time accumulator?!");
 	}
+#pragma optimize("", on)
 }

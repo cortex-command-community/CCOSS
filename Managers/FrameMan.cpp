@@ -24,6 +24,8 @@
 #include "GLCheck.h"
 #include "glad/gl.h"
 
+#include "tracy/Tracy.hpp"
+
 namespace RTE {
 
 	void BitmapDeleter::operator()(BITMAP *bitmap) const { destroy_bitmap(bitmap); }
@@ -232,6 +234,12 @@ namespace RTE {
 				}
 			}
 			m_ColorTablePruneTimer.Reset();
+		}
+
+		// Update redundantly in sim update to ensure our values are exactly precise for the purposes of script GetOffset()
+		int screenCount = (m_HSplit ? 2 : 1) * (m_VSplit ? 2 : 1);
+		for (int playerScreen = 0; playerScreen < screenCount; ++playerScreen) {
+			g_CameraMan.Update(playerScreen);
 		}
 
 		// Queue our MO renders
@@ -806,6 +814,8 @@ namespace RTE {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void FrameMan::Draw() {
+		ZoneScopedN("Draw");
+
 		// Count how many split screens we'll need
 		int screenCount = (m_HSplit ? 2 : 1) * (m_VSplit ? 2 : 1);
 		RTEAssert(screenCount <= 1 || m_PlayerScreen, "Splitscreen surface not ready when needed!");

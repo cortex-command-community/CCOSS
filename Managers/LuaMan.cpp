@@ -1,6 +1,9 @@
 #include "LuaMan.h"
+
 #include "LuabindObjectWrapper.h"
 #include "LuaBindingRegisterDefinitions.h"
+#include "ThreadMan.h"
+
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyLua.hpp"
 
@@ -288,6 +291,8 @@ namespace RTE {
 
 	void LuaMan::Initialize() {
 		m_MasterScriptState.Initialize();
+
+		m_ScriptStates = std::vector<LuaStateWrapper>(std::thread::hardware_concurrency());
 		for (LuaStateWrapper &luaState : m_ScriptStates) {
 			luaState.Initialize();
 		}
@@ -328,8 +333,6 @@ namespace RTE {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	LuaStateWrapper * LuaMan::GetAndLockFreeScriptState() {
-		RTEAssert(g_SettingsMan.GetEnableMultithreadedLua(), "Trying to use a threaded script state while multithreaded lua is disabled!")
-
 		if (s_luaStateOverride) {
 			// We're creating this object in a multithreaded environment, ensure that it's assigned to the same script state as us
 			bool success = s_luaStateOverride->GetMutex().try_lock();
@@ -349,7 +352,7 @@ namespace RTE {
 		return &(*itr);*/
 
 		int ourState = m_LastAssignedLuaState;
-		m_LastAssignedLuaState = (m_LastAssignedLuaState + 1) % c_NumThreadedLuaStates;
+		m_LastAssignedLuaState = (m_LastAssignedLuaState + 1) % m_ScriptStates.size();
 
 		bool success = m_ScriptStates[ourState].GetMutex().try_lock();
 		RTEAssert(success, "Script mutex was already locked while in a non-multithreaded environment!");
@@ -359,49 +362,8 @@ namespace RTE {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	bool LuaMan::IsScriptThreadSafe(const std::string &scriptPath) {
-		if (!g_SettingsMan.GetEnableMultithreadedLua()) {
-			return false;
-		}
-		
-		// First check our cache
-		auto itr = m_ScriptThreadSafetyMap.find(scriptPath);
-		if (itr != m_ScriptThreadSafetyMap.end()) {
-			return itr->second;
-		}
-
-		// Actually open the file and check if it has the multithread-safe mark
-		std::ifstream scriptFile = std::ifstream(scriptPath.c_str());
-		if (!scriptFile.good()) {
-			m_ScriptThreadSafetyMap.insert({ scriptPath, false });
-			return false;
-		}
-
-		std::string::size_type commentPos;
-		bool inBlockComment = false;
-		while (!scriptFile.eof()) {
-			char rawLine[512];
-			scriptFile.getline(rawLine, 512);
-			std::string line = rawLine;
-
-			if (line.find("--[[MULTITHREAD]]--", 0) != std::string::npos) {
-				m_ScriptThreadSafetyMap.insert({scriptPath, true});
-				return true;
-			}
-		}
-
-		m_ScriptThreadSafetyMap.insert({scriptPath, false});
-		return false;
-	}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     void LuaMan::ClearUserModuleCache() {
-		if (m_GCThread.joinable()) {
-			m_GCThread.join();
-		}
-
-		m_ScriptThreadSafetyMap.clear();
+		m_GarbageCollectionTask.wait();
 
 		m_MasterScriptState.ClearLuaScriptCache();
 		for (LuaStateWrapper& luaState : m_ScriptStates) {
@@ -639,7 +601,12 @@ namespace RTE {
 		}
 
 		for (const LuabindObjectWrapper *functionObjectArgument : functionObjectArguments) {
-			functionObjectArgument->GetLuabindObject()->push(m_State);
+			if (functionObjectArgument->GetLuabindObject()->interpreter() != m_State) {
+				LuabindObjectWrapper copy = functionObjectArgument->GetCopyForState(*m_State);
+				copy.GetLuabindObject()->push(m_State);
+			} else {
+				functionObjectArgument->GetLuabindObject()->push(m_State);
+			}
 		}
 
 		const std::string& path = functionObject->GetFilePath();
@@ -1101,9 +1068,7 @@ namespace RTE {
 		}
 
 		// Make sure a GC run isn't happening while we try to apply deletions
-		if (m_GCThread.joinable()) {
-			m_GCThread.join();
-		}
+		m_GarbageCollectionTask.wait();
 
 		// Apply all deletions queued from lua
     	LuabindObjectWrapper::ApplyQueuedDeletions();
@@ -1114,25 +1079,25 @@ namespace RTE {
 	void LuaMan::StartAsyncGarbageCollection() {
 		ZoneScoped;
 		
-		// Start a new thread to perform the GC run.
-		m_GCThread = std::thread([this]() {
-			std::vector<LuaStateWrapper*> allStates;
-			allStates.reserve(m_ScriptStates.size() + 1);
+		std::vector<LuaStateWrapper*> allStates;
+		allStates.reserve(m_ScriptStates.size() + 1);
 
-			allStates.push_back(&m_MasterScriptState);
-			for (LuaStateWrapper& wrapper : m_ScriptStates) {
-				allStates.push_back(&wrapper);
-			}
-
-			std::for_each(std::execution::par, allStates.begin(), allStates.end(),
-				[&](LuaStateWrapper* luaState) {
+		allStates.push_back(&m_MasterScriptState);
+		for (LuaStateWrapper& wrapper : m_ScriptStates) {
+			allStates.push_back(&wrapper);
+		}
+		
+		m_GarbageCollectionTask = BS::multi_future<void>();
+		for (LuaStateWrapper* luaState : allStates) {
+			m_GarbageCollectionTask.push_back(
+				g_ThreadMan.GetPriorityThreadPool().submit([luaState]() {
 					ZoneScopedN("Lua Garbage Collection");
 					std::lock_guard<std::recursive_mutex> lock(luaState->GetMutex());
 					lua_gc(luaState->GetLuaState(), LUA_GCSTEP, 100);
 					lua_gc(luaState->GetLuaState(), LUA_GCSTOP, 0);
-				}
+				})
 			);
-		});
+		}
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
