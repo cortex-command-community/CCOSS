@@ -134,7 +134,7 @@ namespace RTE {
 		/// <summary>
 		/// Clears current performance timings.
 		/// </summary>
-		void ResetPerformanceTimings() { m_MSPSUs.clear(); m_MSPFs.clear(); m_MSPUs.clear(); m_MSPDs.clear(); }
+		void ResetPerformanceTimings() { m_MSPFs.clear(); m_MSPUs.clear(); m_MSPDs.clear(); }
 
 		/// <summary>
 		/// Resets the sim update timer.
